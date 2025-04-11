@@ -7,7 +7,6 @@ members = [
     "task_failure_watcher",   # Watchdog Service (Binary Crate)
     "task_recurrence_manager",# Recurrence Manager (Binary Crate)
     "queue_populator",        # Queue Populator Service (Binary Crate)
-    # "scheduler_ui_backend", # Optional: If the UI needs a dedicated Rust backend (Binary Crate)
 ]
 
 # Optional: Define common dependencies or profiles for all members

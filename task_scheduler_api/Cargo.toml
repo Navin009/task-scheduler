@@ -1,0 +1,22 @@
+[package]
+name = "task_scheduler_api"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+# Depend on the shared core library (using a path dependency within the workspace)
+scheduler_core = { path = "../scheduler_core" }
+
+# Add dependencies specific to the API service
+tokio = { version = "1", features = ["full"] }
+axum = "0.7" # Example web framework (or actix-web, warp, etc.)
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+# Add others like authentication, validation libraries as needed
+# If using workspace dependencies, you can inherit versions:
+# tokio = { workspace = true, features = ["full"] }
+# axum = "0.7" # Not defined in workspace example, so specify version
+# serde = { workspace = true, features = ["derive"] }
+# etc.

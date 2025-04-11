@@ -1,9 +1,10 @@
 // src/lib.rs
 
 // Declare modules
+pub mod cache;
 pub mod db;
 pub mod error;
-pub mod cache;
+pub mod service;
 pub mod task;
 pub mod utils;
 
@@ -12,8 +13,8 @@ pub use error::{Result, SchedulerError};
 pub use task::{Task, TaskStatus};
 
 // Example of re-exporting connection functions directly
-pub use db::connect_postgres;
 pub use cache::connect_redis;
+pub use db::connect_postgres;
 
 // --- Placeholder for Core Scheduler Logic ---
 // This is where the main loop, task fetching, execution,
@@ -170,4 +171,3 @@ mod tests {
         assert_eq!(2 + 2, 4); // Placeholder test
     }
 }
-

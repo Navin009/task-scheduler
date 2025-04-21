@@ -4,8 +4,25 @@ use rocket::get;
 use rocket::post;
 use rocket::put;
 use rocket::serde::json::Json;
-use scheduler_core::models::job::{Job, JobCreate, JobUpdate};
+use scheduler_core::models::{Job, ScheduleType};
+use serde::{Deserialize, Serialize};
 use serde_json::json;
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct JobCreate {
+    pub schedule_type: ScheduleType,
+    pub schedule: String,
+    pub payload: serde_json::Value,
+    pub max_retries: u32,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct JobUpdate {
+    pub schedule_type: Option<ScheduleType>,
+    pub schedule: Option<String>,
+    pub payload: Option<serde_json::Value>,
+    pub max_retries: Option<u32>,
+}
 
 #[post("/jobs", format = "json", data = "<job>")]
 pub async fn create_job(job: Json<JobCreate>) -> Result<Json<serde_json::Value>, ApiError> {
@@ -40,4 +57,4 @@ pub async fn delete_job(id: i32) -> Result<Json<serde_json::Value>, ApiError> {
     Ok(Json(json!({
         "message": format!("Job with id {} deleted successfully", id)
     })))
-} 
+}

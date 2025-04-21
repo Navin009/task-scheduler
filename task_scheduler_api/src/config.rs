@@ -1,5 +1,4 @@
-use std::path::PathBuf;
-use config::{Config, ConfigError, Environment, File};
+use config::{Config, ConfigError, Environment as ConfigEnvironment, File};
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize, Clone)]
@@ -28,7 +27,11 @@ pub struct ServerSettings {
 
 impl Settings {
     pub fn new() -> Result<Self, ConfigError> {
-        let base_path = std::env::current_dir().expect("Failed to determine the current directory");
+        let base_path = std::env::current_dir()
+            .expect("Failed to determine the current directory")
+            .parent()
+            .expect("Failed to get parent directory")
+            .to_path_buf();
         let configuration_directory = base_path.join("config");
 
         // Detect the running environment.
@@ -39,15 +42,17 @@ impl Settings {
             .expect("Failed to parse APP_ENVIRONMENT.");
 
         let environment_filename = format!("{}.yaml", environment.as_str());
-        
+
         let settings = Config::builder()
             // Read the "default" configuration file
             .add_source(File::from(configuration_directory.join("base.yaml")))
             // Layer on the environment-specific values.
-            .add_source(File::from(configuration_directory.join(environment_filename)))
+            .add_source(File::from(
+                configuration_directory.join(environment_filename),
+            ))
             // Add in settings from environment variables (with a prefix of APP and '__' as separator)
             // E.g. `APP_APPLICATION__PORT=5001` would set `Settings.application.port`
-            .add_source(Environment::with_prefix("APP").separator("__"))
+            .add_source(ConfigEnvironment::with_prefix("APP").separator("__"))
             .build()?;
 
         settings.try_deserialize()
@@ -82,4 +87,4 @@ impl TryFrom<String> for Environment {
             )),
         }
     }
-} 
+}

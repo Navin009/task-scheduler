@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
 use crate::error::Error;
-use sqlx::{Type, FromRow, Postgres};
+use sqlx::{Type, FromRow};
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct Job {

@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
+use crate::error::Error;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Job {
@@ -44,7 +45,8 @@ impl Job {
     pub fn validate(&self) -> Result<(), Error> {
         match self.schedule_type {
             ScheduleType::Cron => {
-                cron_parser::parse(&self.schedule)
+                let now = Utc::now();
+                cron_parser::parse(&self.schedule, &now)
                     .map_err(|e| Error::ValidationError(e.to_string()))?;
             }
             ScheduleType::Interval => {

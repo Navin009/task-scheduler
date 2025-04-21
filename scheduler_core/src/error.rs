@@ -3,7 +3,7 @@ use thiserror::Error;
 #[derive(Error, Debug)]
 pub enum Error {
     #[error("Database error: {0}")]
-    DbError(#[from] sqlx::Error),
+    DatabaseError(#[from] sqlx::Error),
 
     #[error("Redis error: {0}")]
     RedisError(#[from] redis::RedisError),
@@ -16,4 +16,7 @@ pub enum Error {
 
     #[error("Serialization error: {0}")]
     SerializationError(#[from] serde_json::Error),
+
+    #[error("Migration error: {0}")]
+    MigrationError(#[from] sqlx::migrate::MigrateError),
 }

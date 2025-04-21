@@ -2,7 +2,7 @@ version: "3.8"
 
 services:
   postgres:
-    image: postgres:17
+    image: postgres:14
     environment:
       POSTGRES_USER: taskscheduler
       POSTGRES_PASSWORD: taskscheduler
@@ -13,7 +13,7 @@ services:
       - "5432:5432"
 
   redis:
-    image: redis:8
+    image: redis:7.2-alpine
     ports:
       - "6379:6379"
     volumes:
@@ -31,6 +31,7 @@ services:
     environment:
       DATABASE_URL: postgres://taskscheduler:taskscheduler@postgres:5432/taskscheduler
       REDIS_URL: redis://redis:6379
+      RUST_LOG: debug
 
   queue-populator:
     build:
@@ -42,6 +43,7 @@ services:
     environment:
       DATABASE_URL: postgres://taskscheduler:taskscheduler@postgres:5432/taskscheduler
       REDIS_URL: redis://redis:6379
+      RUST_LOG: debug
 
   task-executor:
     build:
@@ -53,6 +55,7 @@ services:
     environment:
       DATABASE_URL: postgres://taskscheduler:taskscheduler@postgres:5432/taskscheduler
       REDIS_URL: redis://redis:6379
+      RUST_LOG: debug
 
   task-failure-watcher:
     build:
@@ -64,6 +67,7 @@ services:
     environment:
       DATABASE_URL: postgres://taskscheduler:taskscheduler@postgres:5432/taskscheduler
       REDIS_URL: redis://redis:6379
+      RUST_LOG: debug
 
   task-recurrence-manager:
     build:
@@ -75,6 +79,7 @@ services:
     environment:
       DATABASE_URL: postgres://taskscheduler:taskscheduler@postgres:5432/taskscheduler
       REDIS_URL: redis://redis:6379
+      RUST_LOG: debug
 
 volumes:
   postgres_data:

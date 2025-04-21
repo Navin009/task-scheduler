@@ -1,7 +1,7 @@
 use serde::Deserialize;
-use dotenv::dotenv;
+use crate::error::Error;
 
-#[derive(Clone, Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct Config {
     pub database_url: String,
     pub redis_url: String,
@@ -11,12 +11,12 @@ pub struct Config {
 
 impl Config {
     pub fn from_env() -> Result<Self, Error> {
-        dotenv().ok();
+        let cfg = config::Config::builder()
+            .add_source(config::Environment::default())
+            .build()
+            .map_err(|e| Error::ConfigError(e.to_string()))?;
 
-        let mut cfg = config::Config::new();
-        cfg.merge(config::Environment::default())?;
-
-        cfg.try_into()
+        cfg.try_deserialize()
             .map_err(|e| Error::ConfigError(e.to_string()))
     }
 }

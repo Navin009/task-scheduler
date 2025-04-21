@@ -1,21 +1,15 @@
-use crate::{Config, Error};
-use sqlx::postgres::{PgPool, PgPoolOptions};
+use sqlx::{Pool, Postgres};
+use crate::{Job, JobStatus, Error};
 
-#[derive(Clone)]
-pub struct Db {
-    pool: PgPool,
+pub struct Database {
+    pool: Pool<Postgres>,
 }
 
-impl Db {
-    pub async fn new(config: &Config) -> Result<Self, Error> {
-        let pool = PgPoolOptions::new()
-            .max_connections(10)
-            .connect(&config.database_url)
-            .await?;
-
+impl Database {
+    pub async fn new(database_url: &str) -> Result<Self, Error> {
+        let pool = Pool::<Postgres>::connect(database_url).await?;
         sqlx::migrate!().run(&pool).await?;
-
-        Ok(Self { pool })
+        Ok(Database { pool })
     }
 
     pub async fn create_job(&self, job: &Job) -> Result<(), Error> {
@@ -33,11 +27,10 @@ impl Db {
         )
         .execute(&self.pool)
         .await?;
-
         Ok(())
     }
 
-    pub async fn get_due_jobs(&self, batch_size: i64) -> Result<Vec<Job>, Error> {
+    pub async fn get_pending_jobs(&self, batch_size: i64) -> Result<Vec<Job>, Error> {
         let jobs = sqlx::query_as!(
             Job,
             r#"SELECT * FROM jobs 
@@ -49,7 +42,6 @@ impl Db {
         )
         .fetch_all(&self.pool)
         .await?;
-
         Ok(jobs)
     }
 }

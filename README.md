@@ -1,3 +1,60 @@
+# Task Scheduler
+
+## Development Setup
+
+### Prerequisites
+- Docker
+- Docker Compose
+
+### Starting the Development Environment
+
+1. Start the PostgreSQL and Redis services:
+```bash
+docker compose -f docker-compose.dev.yml up -d
+```
+
+2. The services will be available at:
+   - PostgreSQL: localhost:5432
+     - User: postgres
+     - Password: postgres
+     - Database: scheduler
+   - Redis: localhost:6379
+
+3. To stop the services:
+```bash
+docker compose -f docker-compose.dev.yml down
+```
+
+4. To view logs:
+```bash
+docker compose -f docker-compose.dev.yml logs -f
+```
+
+5. To remove volumes and start fresh:
+```bash
+docker compose -f docker-compose.dev.yml down -v
+```
+
+### Database Migrations
+
+The migrations will run automatically when the application starts. The initial migration creates:
+- `jobs` table for managing scheduled tasks
+- `templates` table for job templates
+- Required ENUM types for job status and schedule types
+
+### Environment Variables
+
+The following environment variables are configured in `.env`:
+```
+DATABASE_URL=postgres://postgres:postgres@localhost:5432/scheduler
+REDIS_URL=redis://localhost:6379
+```
+
+### Development vs Production
+
+- `docker-compose.dev.yml`: Used for local development, spins up only PostgreSQL and Redis
+- `docker-compose.yml`: Full production setup with all microservices
+
 ## Project Structure Overview
 
 Your final directory structure should look something like this:

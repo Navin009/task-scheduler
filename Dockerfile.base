@@ -1,8 +1,33 @@
-FROM rust:1.70-slim-bullseye as builder
+FROM rust:1.77-slim-bullseye as builder
 
 WORKDIR /usr/src/app
-RUN apt-get update && apt-get install -y pkg-config libssl-dev
 
+# Install build dependencies
+RUN apt-get update && apt-get install -y \
+    pkg-config \
+    libssl-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy the workspace
 COPY . .
 
-# This is a base image, actual build commands will be in individual Dockerfiles
+# Build all dependencies
+RUN cargo build --release
+
+# Create a minimal runtime image
+FROM debian:bullseye-slim
+
+# Install runtime dependencies
+RUN apt-get update && apt-get install -y \
+    libssl1.1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy the built binaries
+COPY --from=builder /usr/src/app/target/release/task_scheduler_api /usr/local/bin/
+COPY --from=builder /usr/src/app/target/release/queue_populator /usr/local/bin/
+COPY --from=builder /usr/src/app/target/release/task_executor /usr/local/bin/
+COPY --from=builder /usr/src/app/target/release/task_failure_watcher /usr/local/bin/
+COPY --from=builder /usr/src/app/target/release/task_recurrence_manager /usr/local/bin/
+
+# Set the working directory
+WORKDIR /usr/src/app 

@@ -13,33 +13,32 @@ impl Database {
     }
 
     pub async fn create_job(&self, job: &Job) -> Result<(), Error> {
-        sqlx::query!(
+        sqlx::query(
             r#"INSERT INTO jobs 
             (id, schedule_type, schedule, payload, status, retries, max_retries)
-            VALUES ($1, $2, $3, $4, $5, $6, $7)"#,
-            job.id,
-            job.schedule_type as _,
-            job.schedule,
-            job.payload,
-            job.status as _,
-            job.retries,
-            job.max_retries
+            VALUES ($1, $2, $3, $4, $5, $6, $7)"#
         )
+        .bind(&job.id)
+        .bind(&job.schedule_type)
+        .bind(&job.schedule)
+        .bind(&job.payload)
+        .bind(&job.status)
+        .bind(job.retries)
+        .bind(job.max_retries)
         .execute(&self.pool)
         .await?;
         Ok(())
     }
 
     pub async fn get_pending_jobs(&self, batch_size: i64) -> Result<Vec<Job>, Error> {
-        let jobs = sqlx::query_as!(
-            Job,
+        let jobs = sqlx::query_as::<_, Job>(
             r#"SELECT * FROM jobs 
             WHERE status = $1
             ORDER BY created_at ASC
-            LIMIT $2"#,
-            JobStatus::Pending as _,
-            batch_size
+            LIMIT $2"#
         )
+        .bind(JobStatus::Pending)
+        .bind(batch_size)
         .fetch_all(&self.pool)
         .await?;
         Ok(jobs)

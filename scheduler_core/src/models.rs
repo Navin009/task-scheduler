@@ -1,8 +1,9 @@
 use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
 use crate::error::Error;
+use sqlx::{Type, FromRow, Postgres};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct Job {
     pub id: String,
     pub schedule_type: ScheduleType,
@@ -11,11 +12,11 @@ pub struct Job {
     pub status: JobStatus,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
-    pub retries: u32,
-    pub max_retries: u32,
+    pub retries: i32,
+    pub max_retries: i32,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct Template {
     pub id: String,
     pub cron_pattern: String,
@@ -25,7 +26,9 @@ pub struct Template {
     pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, Type)]
+#[sqlx(type_name = "job_status")]
+#[sqlx(rename_all = "PascalCase")]
 pub enum JobStatus {
     Pending,
     Running,
@@ -34,7 +37,9 @@ pub enum JobStatus {
     Retrying,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+#[sqlx(type_name = "schedule_type")]
+#[sqlx(rename_all = "PascalCase")]
 pub enum ScheduleType {
     Immediate,
     Cron,

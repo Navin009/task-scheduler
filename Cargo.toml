@@ -7,6 +7,7 @@ members = [
     "task_failure_watcher",    # Watchdog Service (Binary Crate)
     "task_recurrence_manager", # Recurrence Manager (Binary Crate)
     "queue_populator",         # Queue Populator Service (Binary Crate)
+    "task_scheduler_monolith", # Unified Binary (Binary Crate)
 ]
 
 # Example Release Profile Optimization (applied when building with --release)

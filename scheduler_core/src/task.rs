@@ -1,4 +1,4 @@
-use crate::database::Database;
+use crate::db::Database;
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;

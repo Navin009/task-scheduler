@@ -1,0 +1,22 @@
+[package]
+name = "task_scheduler_monolith"
+version = "0.1.0"
+edition = "2024"
+authors = ["Your Name <your.email@example.com>"]
+description = "A unified binary for the task scheduler system"
+
+[dependencies]
+scheduler_core = { path = "../scheduler_core" }
+task_scheduler_api = { path = "../task_scheduler_api" }
+task_executor = { path = "../task_executor" }
+task_failure_watcher = { path = "../task_failure_watcher" }
+task_recurrence_manager = { path = "../task_recurrence_manager" }
+queue_populator = { path = "../queue_populator" }
+
+# Common dependencies
+tokio = { version = "1.36", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+anyhow = "1.0"
+log = "0.4"
+env_logger = "0.11" 

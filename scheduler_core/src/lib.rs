@@ -10,10 +10,8 @@ pub use api_models::{
     DeleteResponse, JobCreate, JobResponse, JobUpdate, TemplateCreate, TemplateResponse,
     TemplateUpdate,
 };
-pub use cache::RedisClient;
 pub use cache::{Cache, CacheConfig};
 pub use config::Config;
-pub use database::Database;
 pub use db::Database;
 pub use error::Error as SchedulerError;
 pub use models::{Job, JobStatus, ScheduleType, Template};

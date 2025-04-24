@@ -1,6 +1,6 @@
 use anyhow::Result;
-use sqlx::Row;
 use sqlx::postgres::{PgPool, PgRow};
+use sqlx::{Column, Row};
 use std::collections::HashMap;
 
 pub struct Database {
@@ -15,7 +15,7 @@ impl Database {
 
     // Low-level job operations
     pub async fn create_job(&self, job: &HashMap<&str, String>) -> Result<String> {
-        let columns = job.keys().collect::<Vec<_>>().join(", ");
+        let columns = job.keys().map(|s| *s).collect::<Vec<_>>().join(", ");
         let values = job.values().collect::<Vec<_>>();
         let placeholders = (1..=values.len())
             .map(|i| format!("${}", i))
@@ -27,8 +27,12 @@ impl Database {
             columns, placeholders
         );
 
-        let id = sqlx::query(&query)
-            .bind_all(values)
+        let mut query_builder = sqlx::query(&query);
+        for value in values {
+            query_builder = query_builder.bind(value);
+        }
+
+        let id = query_builder
             .fetch_one(&self.pool)
             .await?
             .get::<String, _>("id");
@@ -58,12 +62,12 @@ impl Database {
             set_clauses
         );
 
-        let mut query = sqlx::query(&query).bind(id);
+        let mut query_builder = sqlx::query(&query).bind(id);
         for value in updates.values() {
-            query = query.bind(value);
+            query_builder = query_builder.bind(value);
         }
 
-        let result = query.execute(&self.pool).await?;
+        let result = query_builder.execute(&self.pool).await?;
         Ok(result.rows_affected() > 0)
     }
 
@@ -104,7 +108,7 @@ impl Database {
             .fetch_all(&self.pool)
             .await?;
 
-        Ok(rows.into_iter().map(row_to_hashmap).collect())
+        Ok(rows.iter().map(row_to_hashmap).collect())
     }
 }
 

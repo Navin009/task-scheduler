@@ -1,18 +1,19 @@
 use std::time::Duration;
 use tokio::sync::Semaphore;
-use tracing::{error, info, warn};
+use tracing::{error, info};
 
 use scheduler_core::{
-    cache::RedisClient,
+    cache::Cache,
     db::Database,
-    models::{Job, JobStatus},
+    task::{Job, JobStatus},
 };
 
 use crate::{error::Error, process::ProcessManager, state::ExecutionState};
 
+#[derive(Clone)]
 pub struct TaskExecutor {
     db: Database,
-    cache: RedisClient,
+    cache: Cache,
     process_manager: ProcessManager,
     concurrency_limit: usize,
     semaphore: Semaphore,
@@ -21,7 +22,7 @@ pub struct TaskExecutor {
 impl TaskExecutor {
     pub async fn new(
         db: Database,
-        cache: RedisClient,
+        cache: Cache,
         timeout: Duration,
         max_memory_mb: u64,
         max_cpu_percent: u32,
@@ -53,7 +54,7 @@ impl TaskExecutor {
                 })?;
 
             // Try to get next job from queue
-            match self.cache.pop_job().await {
+            match self.get_next_job().await {
                 Ok(Some(job)) => {
                     let executor = self.clone();
                     tokio::spawn(async move {
@@ -74,18 +75,28 @@ impl TaskExecutor {
         }
     }
 
-    async fn execute_job(&self, mut job: Job) -> Result<(), Error> {
+    async fn get_next_job(&self) -> Result<Option<Job>, Error> {
+        if let Some(job_id) = self.cache.pop_from_queue("jobs").await? {
+            if let Some(job) = self.db.get_job(&job_id).await? {
+                return Ok(Some(job));
+            }
+        }
+        Ok(None)
+    }
+
+    async fn execute_job(&self, job: Job) -> Result<(), Error> {
         let mut state = ExecutionState::new(job);
 
         // Mark job as running
         state.mark_running()?;
-        self.db
-            .update_job_status(&state.job.id, JobStatus::Running)
-            .await?;
+        let mut updates = std::collections::HashMap::new();
+        updates.insert("status", JobStatus::Running.to_string());
+        self.db.update_job(&state.job.id, &updates).await?;
 
         // Parse job payload
-        let payload: serde_json::Value = serde_json::from_str(&state.job.payload.to_string())
-            .map_err(|e| Error::Process(format!("Invalid job payload: {}", e)))?;
+        let payload: serde_json::Value =
+            serde_json::from_str(&serde_json::to_string(&state.job.payload)?)
+                .map_err(|e| Error::Process(format!("Invalid job payload: {}", e)))?;
 
         // Extract command and arguments
         let command = payload["command"]
@@ -107,44 +118,30 @@ impl TaskExecutor {
             Ok(output) => {
                 let output_str = String::from_utf8_lossy(&output.stdout).into();
                 state.mark_completed(output_str)?;
-                self.db
-                    .update_job_status(&state.job.id, JobStatus::Completed)
-                    .await?;
+                let mut updates = std::collections::HashMap::new();
+                updates.insert("status", JobStatus::Completed.to_string());
+                self.db.update_job(&state.job.id, &updates).await?;
             }
             Err(e) => {
-                state.mark_failed(e.to_string())?;
-                self.db
-                    .update_job_status(&state.job.id, JobStatus::Failed)
-                    .await?;
+                let error_str = e.to_string();
+                state.mark_failed(error_str.clone())?;
+                let mut updates = std::collections::HashMap::new();
+                updates.insert("status", JobStatus::Failed.to_string());
+                self.db.update_job(&state.job.id, &updates).await?;
 
                 // Check if we should retry
-                if state.job.retries < state.job.max_retries {
+                if state.job.attempts < state.job.max_attempts {
                     if let Ok(()) = state.mark_retrying() {
-                        self.db
-                            .update_job_status(&state.job.id, JobStatus::Retrying)
-                            .await?;
-                        self.cache.push_job(&state.job).await?;
+                        let mut updates = std::collections::HashMap::new();
+                        updates.insert("status", JobStatus::Pending.to_string());
+                        updates.insert("attempts", (state.job.attempts + 1).to_string());
+                        self.db.update_job(&state.job.id, &updates).await?;
+                        self.cache.push_to_queue("jobs", &state.job.id).await?;
                     }
                 }
             }
         }
 
         Ok(())
-    }
-}
-
-impl Clone for TaskExecutor {
-    fn clone(&self) -> Self {
-        Self {
-            db: self.db.clone(),
-            cache: self.cache.clone(),
-            process_manager: ProcessManager::new(
-                self.process_manager.timeout,
-                self.process_manager.max_memory_mb,
-                self.process_manager.max_cpu_percent,
-            ),
-            concurrency_limit: self.concurrency_limit,
-            semaphore: self.semaphore.clone(),
-        }
     }
 }

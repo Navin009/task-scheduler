@@ -12,8 +12,8 @@ database:
   postgresql:
     host: ${DATABASE_HOST:localhost}
     port: ${DATABASE_PORT:5432}
-    user: ${DATABASE_USER:taskscheduler}
-    password: ${DATABASE_PASSWORD:taskscheduler}
+    user: ${DATABASE_USER:task_scheduler}
+    password: ${DATABASE_PASSWORD:task_scheduler}
     database: task_scheduler
 
 logging:

@@ -90,11 +90,9 @@ impl Job {
                 })?;
             }
             ScheduleType::Polling => {
-                // For polling, schedule should be a JSON object with interval and max_attempts
                 let polling_config: serde_json::Value = serde_json::from_str(&self.schedule)
                     .map_err(|_| Error::ValidationError("Invalid polling config format".into()))?;
 
-                // Validate required fields
                 if !polling_config.is_object() {
                     return Err(Error::ValidationError(
                         "Polling config must be a JSON object".into(),

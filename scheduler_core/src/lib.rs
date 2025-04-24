@@ -11,6 +11,6 @@ pub use api_models::{
 };
 pub use config::Config;
 pub use db::Database;
-pub use error::Error;
+pub use error::Error as SchedulerError;
 pub use models::{Job, JobStatus, ScheduleType, Template};
 pub use redis::RedisClient;

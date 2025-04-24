@@ -1,9 +1,10 @@
-use crate::models::{Job, JobStatus, ScheduleType, Template};
+use crate::db::Database as Db;
 use crate::error::Error;
-use crate::db::Db;
+use crate::models::{Job, JobStatus, ScheduleType, Template};
 use chrono::{DateTime, Utc};
 use serde_json::Value;
 use std::time::Duration;
+use uuid::Uuid;
 
 /// Creates a new job with the specified parameters and saves it to the database
 pub async fn create_job(
@@ -15,7 +16,7 @@ pub async fn create_job(
 ) -> Result<Job, Error> {
     let now = Utc::now();
     let job = Job {
-        id: uuid::Uuid::new_v4().to_string(),
+        id: Uuid::new_v4().to_string(),
         schedule_type,
         schedule,
         payload,
@@ -23,7 +24,7 @@ pub async fn create_job(
         created_at: now,
         updated_at: now,
         retries: 0,
-        max_retries,
+        max_retries: max_retries as i32,
     };
 
     job.validate()?;
@@ -38,12 +39,11 @@ pub async fn create_template(
     payload_template: Value,
 ) -> Result<Template, Error> {
     // Validate cron pattern
-    cron_parser::parse(&cron_pattern)
-        .map_err(|e| Error::ValidationError(e.to_string()))?;
+    cron_parser::parse(&cron_pattern).map_err(|e| Error::ValidationError(e.to_string()))?;
 
     let now = Utc::now();
     let template = Template {
-        id: uuid::Uuid::new_v4().to_string(),
+        id: Uuid::new_v4().to_string(),
         cron_pattern,
         payload_template,
         active: true,
@@ -86,7 +86,9 @@ pub fn calculate_next_execution(job: &Job) -> Result<DateTime<Utc>, Error> {
                 .ok_or_else(|| Error::InvalidSchedule("No future execution time found".into()))
         }
         ScheduleType::Interval => {
-            let interval_seconds = job.schedule.parse::<u64>()
+            let interval_seconds = job
+                .schedule
+                .parse::<u64>()
                 .map_err(|_| Error::ValidationError("Invalid interval format".into()))?;
             Ok(Utc::now() + Duration::from_secs(interval_seconds))
         }
@@ -101,14 +103,15 @@ pub async fn generate_job_from_template(db: &Db, template: &Template) -> Result<
         template.cron_pattern.clone(),
         template.payload_template.clone(),
         3, // Default max retries
-    ).await?;
+    )
+    .await?;
     Ok(job)
 }
 
 /// Validates if a job can be executed
 pub fn can_execute_job(job: &Job) -> bool {
-    job.status == JobStatus::Pending || 
-    (job.status == JobStatus::Failed && job.retries < job.max_retries)
+    job.status == JobStatus::Pending
+        || (job.status == JobStatus::Failed && job.retries < job.max_retries)
 }
 
 /// Marks a job as completed in the database

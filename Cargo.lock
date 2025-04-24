@@ -3067,6 +3067,7 @@ version = "0.1.0"
 dependencies = [
  "base64 0.22.1",
  "chrono",
+ "cron-parser",
  "dotenv 0.14.1",
  "env_logger",
  "jsonwebtoken",
@@ -3081,7 +3082,7 @@ dependencies = [
  "serde_json",
  "serde_yaml",
  "sqlx 0.8.5",
- "thiserror 1.0.69",
+ "thiserror 2.0.12",
  "tokio",
  "uuid",
 ]

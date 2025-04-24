@@ -31,6 +31,7 @@ pub enum ApiError {
     InternalServerError(String),
     DatabaseError(String),
     RedisError(String),
+    ValidationError(String),
 }
 
 impl From<SchedulerError> for ApiError {
@@ -39,9 +40,13 @@ impl From<SchedulerError> for ApiError {
             SchedulerError::DatabaseError(e) => ApiError::DatabaseError(e.to_string()),
             SchedulerError::RedisError(e) => ApiError::RedisError(e.to_string()),
             SchedulerError::ConfigError(e) => ApiError::InternalServerError(e),
-            SchedulerError::ValidationError(e) => ApiError::BadRequest(e),
+            SchedulerError::ValidationError(e) => ApiError::ValidationError(e),
             SchedulerError::SerializationError(e) => ApiError::InternalServerError(e.to_string()),
             SchedulerError::MigrationError(e) => ApiError::InternalServerError(e.to_string()),
+            SchedulerError::AuthError(e) => ApiError::BadRequest(e),
+            SchedulerError::NotFound(e) => ApiError::NotFound(e),
+            SchedulerError::BadRequest(e) => ApiError::BadRequest(e),
+            SchedulerError::InternalServerError(e) => ApiError::InternalServerError(e),
         }
     }
 }
@@ -54,6 +59,7 @@ impl fmt::Display for ApiError {
             ApiError::InternalServerError(msg) => write!(f, "Internal Server Error: {}", msg),
             ApiError::DatabaseError(msg) => write!(f, "Database Error: {}", msg),
             ApiError::RedisError(msg) => write!(f, "Redis Error: {}", msg),
+            ApiError::ValidationError(msg) => write!(f, "Validation Error: {}", msg),
         }
     }
 }
@@ -66,6 +72,7 @@ impl<'r> Responder<'r, 'static> for ApiError {
             ApiError::InternalServerError(msg) => (Status::InternalServerError, msg),
             ApiError::DatabaseError(msg) => (Status::InternalServerError, msg),
             ApiError::RedisError(msg) => (Status::InternalServerError, msg),
+            ApiError::ValidationError(msg) => (Status::BadRequest, msg),
         };
 
         let body = json!({

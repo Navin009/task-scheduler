@@ -1,5 +1,6 @@
 use crate::models::ScheduleType;
-use crate::{Error, Job, JobStatus};
+use crate::{Job, JobStatus, error::Error};
+use chrono::{DateTime, Utc};
 use sqlx::{Pool, Postgres};
 
 #[derive(Debug, Clone)]
@@ -91,5 +92,95 @@ impl Database {
             .execute(&self.pool)
             .await?;
         Ok(())
+    }
+
+    pub async fn create_one_time_job(
+        &self,
+        id: &str,
+        payload: &serde_json::Value,
+        scheduled_at: DateTime<Utc>,
+        max_retries: i32,
+    ) -> Result<(), Error> {
+        let job = Job {
+            id: id.to_string(),
+            schedule_type: ScheduleType::OneTime,
+            schedule: scheduled_at.to_rfc3339(),
+            payload: payload.clone(),
+            status: JobStatus::Pending,
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+            retries: 0,
+            max_retries: max_retries as i32,
+        };
+
+        self.create_job(&job).await
+    }
+
+    pub async fn create_recurring_job(
+        &self,
+        id: &str,
+        payload: &serde_json::Value,
+        schedule: &str,
+        max_retries: i32,
+    ) -> Result<(), Error> {
+        let job = Job {
+            id: id.to_string(),
+            schedule_type: ScheduleType::Recurring,
+            schedule: schedule.to_string(),
+            payload: payload.clone(),
+            status: JobStatus::Pending,
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+            retries: 0,
+            max_retries: max_retries as i32,
+        };
+
+        self.create_job(&job).await
+    }
+
+    pub async fn create_polling_job(
+        &self,
+        id: &str,
+        payload: &serde_json::Value,
+        interval: i32,
+        max_attempts: i32,
+    ) -> Result<(), Error> {
+        let polling_config = serde_json::json!({
+            "interval": interval,
+            "max_attempts": max_attempts
+        });
+
+        let job = Job {
+            id: id.to_string(),
+            schedule_type: ScheduleType::Polling,
+            schedule: polling_config.to_string(),
+            payload: payload.clone(),
+            status: JobStatus::Pending,
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+            retries: 0,
+            max_retries: max_attempts,
+        };
+
+        self.create_job(&job).await
+    }
+
+    pub async fn update_one_time_job(
+        &self,
+        id: &str,
+        payload: Option<&serde_json::Value>,
+        scheduled_at: Option<DateTime<Utc>>,
+        max_retries: Option<i32>,
+    ) -> Result<Job, Error> {
+        let schedule = scheduled_at.map(|dt| dt.to_rfc3339());
+        self.update_job(
+            id,
+            Some(ScheduleType::OneTime),
+            schedule.as_deref(),
+            payload,
+            max_retries,
+        )
+        .await?
+        .ok_or_else(|| Error::NotFound(format!("Job with id {} not found", id)))
     }
 }

@@ -5,7 +5,7 @@ pub mod database;
 pub mod db;
 pub mod error;
 pub mod models;
-pub mod redis;
+pub mod cache;
 pub mod task;
 
 pub use api_models::{
@@ -18,5 +18,5 @@ pub use database::Database;
 pub use db::Database;
 pub use error::Error as SchedulerError;
 pub use models::{Job, JobStatus, ScheduleType, Template};
-pub use redis::RedisClient;
+pub use cache::RedisClient;
 pub use task::{JobType, TaskManager};

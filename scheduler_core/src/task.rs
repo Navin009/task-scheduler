@@ -1,165 +1,183 @@
-use crate::db::Database as Db;
-use crate::error::Error;
-use crate::models::{Job, JobStatus, ScheduleType, Template};
-use chrono::{DateTime, Utc};
-use serde_json::Value;
-use std::time::Duration;
-use uuid::Uuid;
+use crate::database::Database;
+use anyhow::Result;
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
-/// Creates a new job with the specified parameters and saves it to the database
-pub async fn create_job(
-    db: &Db,
-    schedule_type: ScheduleType,
-    schedule: String,
-    payload: Value,
-    max_retries: u32,
-) -> Result<Job, Error> {
-    let now = Utc::now();
-    let job = Job {
-        id: Uuid::new_v4().to_string(),
-        schedule_type,
-        schedule,
-        payload,
-        status: JobStatus::Pending,
-        created_at: now,
-        updated_at: now,
-        retries: 0,
-        max_retries: max_retries as i32,
-    };
-
-    job.validate()?;
-    db.create_job(&job).await?;
-    Ok(job)
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Job {
+    pub id: String,
+    pub job_type: JobType,
+    pub status: JobStatus,
+    pub priority: i32,
+    pub scheduled_at: String,
+    pub parent_job_id: Option<String>,
+    pub max_attempts: i32,
+    pub attempts: i32,
+    pub payload: HashMap<String, String>,
 }
 
-/// Creates a new template for recurring jobs and saves it to the database
-pub async fn create_template(
-    db: &Db,
-    cron_pattern: String,
-    payload_template: Value,
-) -> Result<Template, Error> {
-    // Validate cron pattern
-    cron_parser::parse(&cron_pattern).map_err(|e| Error::ValidationError(e.to_string()))?;
-
-    let now = Utc::now();
-    let template = Template {
-        id: Uuid::new_v4().to_string(),
-        cron_pattern,
-        payload_template,
-        active: true,
-        created_at: now,
-        updated_at: now,
-    };
-
-    db.create_template(&template).await?;
-    Ok(template)
+#[derive(Debug, Serialize, Deserialize)]
+pub enum JobType {
+    OneTime,
+    Recurring,
+    Polling,
 }
 
-/// Updates the status of a job in the database
-pub async fn update_job_status(db: &Db, job: &mut Job, new_status: JobStatus) -> Result<(), Error> {
-    job.status = new_status;
-    job.updated_at = Utc::now();
-    db.update_job_status(&job.id, new_status).await?;
-    Ok(())
+#[derive(Debug, Serialize, Deserialize)]
+pub enum JobStatus {
+    Pending,
+    Queued,
+    Running,
+    Completed,
+    Failed,
 }
 
-/// Increments the retry count for a job in the database
-pub async fn increment_retry_count(db: &Db, job: &mut Job) -> Result<(), Error> {
-    if job.retries >= job.max_retries {
-        return Err(Error::MaxRetriesExceeded);
+pub struct TaskManager {
+    db: Database,
+}
+
+impl TaskManager {
+    pub fn new(db: Database) -> Self {
+        Self { db }
     }
-    job.retries += 1;
-    job.updated_at = Utc::now();
-    db.increment_job_retries(&job.id).await?;
-    Ok(())
-}
 
-/// Calculates the next execution time for a job
-pub fn calculate_next_execution(job: &Job) -> Result<DateTime<Utc>, Error> {
-    match job.schedule_type {
-        ScheduleType::Immediate => Ok(Utc::now()),
-        ScheduleType::Cron => {
-            let schedule = cron_parser::parse(&job.schedule)
-                .map_err(|e| Error::ValidationError(e.to_string()))?;
-            schedule
-                .next_after(&Utc::now())
-                .ok_or_else(|| Error::InvalidSchedule("No future execution time found".into()))
-        }
-        ScheduleType::Interval => {
-            let interval_seconds = job
-                .schedule
-                .parse::<u64>()
-                .map_err(|_| Error::ValidationError("Invalid interval format".into()))?;
-            Ok(Utc::now() + Duration::from_secs(interval_seconds))
-        }
+    pub async fn create_one_time_job(
+        &self,
+        scheduled_at: String,
+        priority: i32,
+        payload: HashMap<String, String>,
+    ) -> Result<String> {
+        let mut job_data = HashMap::new();
+        job_data.insert("job_type", "one_time".to_string());
+        job_data.insert("status", "pending".to_string());
+        job_data.insert("priority", priority.to_string());
+        job_data.insert("scheduled_at", scheduled_at);
+        job_data.insert("max_attempts", "1".to_string());
+        job_data.insert("attempts", "0".to_string());
+        job_data.insert("payload", serde_json::to_string(&payload)?);
+
+        self.db.create_job(&job_data).await
+    }
+
+    pub async fn create_recurring_job(
+        &self,
+        parent_job_id: String,
+        scheduled_at: String,
+        priority: i32,
+        payload: HashMap<String, String>,
+    ) -> Result<String> {
+        let mut job_data = HashMap::new();
+        job_data.insert("job_type", "recurring".to_string());
+        job_data.insert("status", "pending".to_string());
+        job_data.insert("priority", priority.to_string());
+        job_data.insert("scheduled_at", scheduled_at);
+        job_data.insert("parent_job_id", parent_job_id);
+        job_data.insert("max_attempts", "1".to_string());
+        job_data.insert("attempts", "0".to_string());
+        job_data.insert("payload", serde_json::to_string(&payload)?);
+
+        self.db.create_job(&job_data).await
+    }
+
+    pub async fn create_polling_job(
+        &self,
+        scheduled_at: String,
+        priority: i32,
+        max_attempts: i32,
+        payload: HashMap<String, String>,
+    ) -> Result<String> {
+        let mut job_data = HashMap::new();
+        job_data.insert("job_type", "polling".to_string());
+        job_data.insert("status", "pending".to_string());
+        job_data.insert("priority", priority.to_string());
+        job_data.insert("scheduled_at", scheduled_at);
+        job_data.insert("max_attempts", max_attempts.to_string());
+        job_data.insert("attempts", "0".to_string());
+        job_data.insert("payload", serde_json::to_string(&payload)?);
+
+        self.db.create_job(&job_data).await
+    }
+
+    pub async fn get_job(&self, id: &str) -> Result<Option<Job>> {
+        let job_data = self.db.get_job(id).await?;
+        Ok(job_data.map(|data| Job {
+            id: data.get("id").unwrap().clone(),
+            job_type: match data.get("job_type").unwrap().as_str() {
+                "one_time" => JobType::OneTime,
+                "recurring" => JobType::Recurring,
+                "polling" => JobType::Polling,
+                _ => panic!("Invalid job type"),
+            },
+            status: match data.get("status").unwrap().as_str() {
+                "pending" => JobStatus::Pending,
+                "queued" => JobStatus::Queued,
+                "running" => JobStatus::Running,
+                "completed" => JobStatus::Completed,
+                "failed" => JobStatus::Failed,
+                _ => panic!("Invalid job status"),
+            },
+            priority: data.get("priority").unwrap().parse().unwrap(),
+            scheduled_at: data.get("scheduled_at").unwrap().clone(),
+            parent_job_id: data.get("parent_job_id").map(|s| s.clone()),
+            max_attempts: data.get("max_attempts").unwrap().parse().unwrap(),
+            attempts: data.get("attempts").unwrap().parse().unwrap(),
+            payload: serde_json::from_str(data.get("payload").unwrap()).unwrap(),
+        }))
+    }
+
+    pub async fn update_job_status(&self, id: &str, status: JobStatus) -> Result<bool> {
+        let mut updates = HashMap::new();
+        updates.insert("status", status.to_string());
+        self.db.update_job(id, &updates).await
+    }
+
+    pub async fn increment_job_attempts(&self, id: &str) -> Result<bool> {
+        let mut updates = HashMap::new();
+        updates.insert("attempts", "attempts + 1".to_string());
+        self.db.update_job(id, &updates).await
+    }
+
+    pub async fn get_due_jobs(&self, limit: i64) -> Result<Vec<Job>> {
+        let job_types = vec!["one_time", "recurring", "polling"];
+        let job_data = self.db.get_due_jobs(limit, &job_types).await?;
+
+        Ok(job_data
+            .into_iter()
+            .map(|data| Job {
+                id: data.get("id").unwrap().clone(),
+                job_type: match data.get("job_type").unwrap().as_str() {
+                    "one_time" => JobType::OneTime,
+                    "recurring" => JobType::Recurring,
+                    "polling" => JobType::Polling,
+                    _ => panic!("Invalid job type"),
+                },
+                status: match data.get("status").unwrap().as_str() {
+                    "pending" => JobStatus::Pending,
+                    "queued" => JobStatus::Queued,
+                    "running" => JobStatus::Running,
+                    "completed" => JobStatus::Completed,
+                    "failed" => JobStatus::Failed,
+                    _ => panic!("Invalid job status"),
+                },
+                priority: data.get("priority").unwrap().parse().unwrap(),
+                scheduled_at: data.get("scheduled_at").unwrap().clone(),
+                parent_job_id: data.get("parent_job_id").map(|s| s.clone()),
+                max_attempts: data.get("max_attempts").unwrap().parse().unwrap(),
+                attempts: data.get("attempts").unwrap().parse().unwrap(),
+                payload: serde_json::from_str(data.get("payload").unwrap()).unwrap(),
+            })
+            .collect())
     }
 }
 
-/// Generates a job from a template and saves it to the database
-pub async fn generate_job_from_template(db: &Db, template: &Template) -> Result<Job, Error> {
-    let job = create_job(
-        db,
-        ScheduleType::Cron,
-        template.cron_pattern.clone(),
-        template.payload_template.clone(),
-        3, // Default max retries
-    )
-    .await?;
-    Ok(job)
-}
-
-/// Validates if a job can be executed
-pub fn can_execute_job(job: &Job) -> bool {
-    job.status == JobStatus::Pending
-        || (job.status == JobStatus::Failed && job.retries < job.max_retries)
-}
-
-/// Marks a job as completed in the database
-pub async fn mark_job_completed(db: &Db, job: &mut Job) -> Result<(), Error> {
-    update_job_status(db, job, JobStatus::Completed).await
-}
-
-/// Marks a job as failed in the database
-pub async fn mark_job_failed(db: &Db, job: &mut Job) -> Result<(), Error> {
-    update_job_status(db, job, JobStatus::Failed).await
-}
-
-/// Marks a job as running in the database
-pub async fn mark_job_running(db: &Db, job: &mut Job) -> Result<(), Error> {
-    update_job_status(db, job, JobStatus::Running).await
-}
-
-/// Marks a job as retrying in the database
-pub async fn mark_job_retrying(db: &Db, job: &mut Job) -> Result<(), Error> {
-    update_job_status(db, job, JobStatus::Retrying).await
-}
-
-/// Gets due jobs from the database
-pub async fn get_due_jobs(db: &Db, batch_size: i64) -> Result<Vec<Job>, Error> {
-    db.get_due_jobs(batch_size).await
-}
-
-/// Gets a job by ID from the database
-pub async fn get_job_by_id(db: &Db, job_id: &str) -> Result<Job, Error> {
-    db.get_job_by_id(job_id).await
-}
-
-/// Gets all active templates from the database
-pub async fn get_active_templates(db: &Db) -> Result<Vec<Template>, Error> {
-    db.get_active_templates().await
-}
-
-/// Updates a template in the database
-pub async fn update_template(db: &Db, template: &Template) -> Result<(), Error> {
-    db.update_template(template).await
-}
-
-/// Deletes a job from the database
-pub async fn delete_job(db: &Db, job_id: &str) -> Result<(), Error> {
-    db.delete_job(job_id).await
-}
-
-/// Deletes a template from the database
-pub async fn delete_template(db: &Db, template_id: &str) -> Result<(), Error> {
-    db.delete_template(template_id).await
+impl ToString for JobStatus {
+    fn to_string(&self) -> String {
+        match self {
+            JobStatus::Pending => "pending".to_string(),
+            JobStatus::Queued => "queued".to_string(),
+            JobStatus::Running => "running".to_string(),
+            JobStatus::Completed => "completed".to_string(),
+            JobStatus::Failed => "failed".to_string(),
+        }
+    }
 }

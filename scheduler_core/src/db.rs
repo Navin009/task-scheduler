@@ -1,186 +1,119 @@
-use crate::models::ScheduleType;
-use crate::{Job, JobStatus, error::Error};
-use chrono::{DateTime, Utc};
-use sqlx::{Pool, Postgres};
+use anyhow::Result;
+use sqlx::Row;
+use sqlx::postgres::{PgPool, PgRow};
+use std::collections::HashMap;
 
-#[derive(Debug, Clone)]
 pub struct Database {
-    pool: Pool<Postgres>,
+    pool: PgPool,
 }
 
 impl Database {
-    pub fn new(pool: Pool<Postgres>) -> Self {
-        Database { pool }
+    pub async fn new(url: &str) -> Result<Self> {
+        let pool = PgPool::connect(url).await?;
+        Ok(Self { pool })
     }
 
-    pub async fn execute_query(&self, query: &str) -> Result<Vec<sqlx::postgres::PgRow>, Error> {
-        let rows = sqlx::query(query).fetch_all(&self.pool).await?;
-        Ok(rows)
+    // Low-level job operations
+    pub async fn create_job(&self, job: &HashMap<&str, String>) -> Result<String> {
+        let columns = job.keys().collect::<Vec<_>>().join(", ");
+        let values = job.values().collect::<Vec<_>>();
+        let placeholders = (1..=values.len())
+            .map(|i| format!("${}", i))
+            .collect::<Vec<_>>()
+            .join(", ");
+
+        let query = format!(
+            "INSERT INTO jobs ({}) VALUES ({}) RETURNING id",
+            columns, placeholders
+        );
+
+        let id = sqlx::query(&query)
+            .bind_all(values)
+            .fetch_one(&self.pool)
+            .await?
+            .get::<String, _>("id");
+
+        Ok(id)
     }
 
-    pub async fn create_job(&self, job: &Job) -> Result<(), Error> {
-        sqlx::query(
-            r#"INSERT INTO jobs 
-            (id, schedule_type, schedule, payload, status, retries, max_retries)
-            VALUES ($1, $2, $3, $4, $5, $6, $7)"#,
-        )
-        .bind(&job.id)
-        .bind(&job.schedule_type)
-        .bind(&job.schedule)
-        .bind(&job.payload)
-        .bind(&job.status)
-        .bind(job.retries)
-        .bind(job.max_retries)
-        .execute(&self.pool)
-        .await?;
-        Ok(())
-    }
-
-    pub async fn get_pending_jobs(&self, batch_size: i64) -> Result<Vec<Job>, Error> {
-        let jobs = sqlx::query_as::<_, Job>(
-            r#"SELECT * FROM jobs 
-            WHERE status = $1
-            ORDER BY created_at ASC
-            LIMIT $2"#,
-        )
-        .bind(JobStatus::Pending)
-        .bind(batch_size)
-        .fetch_all(&self.pool)
-        .await?;
-        Ok(jobs)
-    }
-
-    pub async fn get_job(&self, id: &str) -> Result<Option<Job>, Error> {
-        let job = sqlx::query_as::<_, Job>(r#"SELECT * FROM jobs WHERE id = $1"#)
+    pub async fn get_job(&self, id: &str) -> Result<Option<HashMap<String, String>>> {
+        let row = sqlx::query("SELECT * FROM jobs WHERE id = $1")
             .bind(id)
             .fetch_optional(&self.pool)
             .await?;
-        Ok(job)
+
+        Ok(row.map(|r| row_to_hashmap(&r)))
     }
 
-    pub async fn update_job(
-        &self,
-        id: &str,
-        schedule_type: Option<ScheduleType>,
-        schedule: Option<&str>,
-        payload: Option<&serde_json::Value>,
-        max_retries: Option<i32>,
-    ) -> Result<Option<Job>, Error> {
-        let job = sqlx::query_as::<_, Job>(
-            r#"UPDATE jobs 
-            SET schedule_type = COALESCE($2, schedule_type),
-                schedule = COALESCE($3, schedule),
-                payload = COALESCE($4, payload),
-                max_retries = COALESCE($5, max_retries),
-                updated_at = CURRENT_TIMESTAMP
-            WHERE id = $1
-            RETURNING *"#,
-        )
-        .bind(id)
-        .bind(schedule_type)
-        .bind(schedule)
-        .bind(payload)
-        .bind(max_retries)
-        .fetch_optional(&self.pool)
-        .await?;
-        Ok(job)
+    pub async fn update_job(&self, id: &str, updates: &HashMap<&str, String>) -> Result<bool> {
+        let set_clauses = updates
+            .iter()
+            .enumerate()
+            .map(|(i, (k, _))| format!("{} = ${}", k, i + 2))
+            .collect::<Vec<_>>()
+            .join(", ");
+
+        let query = format!(
+            "UPDATE jobs SET {}, updated_at = NOW() WHERE id = $1",
+            set_clauses
+        );
+
+        let mut query = sqlx::query(&query).bind(id);
+        for value in updates.values() {
+            query = query.bind(value);
+        }
+
+        let result = query.execute(&self.pool).await?;
+        Ok(result.rows_affected() > 0)
     }
 
-    pub async fn delete_job(&self, id: &str) -> Result<(), Error> {
-        sqlx::query(r#"DELETE FROM jobs WHERE id = $1"#)
+    pub async fn delete_job(&self, id: &str) -> Result<bool> {
+        let result = sqlx::query("DELETE FROM jobs WHERE id = $1")
             .bind(id)
             .execute(&self.pool)
             .await?;
-        Ok(())
+
+        Ok(result.rows_affected() > 0)
     }
 
-    pub async fn create_one_time_job(
+    pub async fn get_due_jobs(
         &self,
-        id: &str,
-        payload: &serde_json::Value,
-        scheduled_at: DateTime<Utc>,
-        max_retries: i32,
-    ) -> Result<(), Error> {
-        let job = Job {
-            id: id.to_string(),
-            schedule_type: ScheduleType::OneTime,
-            schedule: scheduled_at.to_rfc3339(),
-            payload: payload.clone(),
-            status: JobStatus::Pending,
-            created_at: Utc::now(),
-            updated_at: Utc::now(),
-            retries: 0,
-            max_retries: max_retries as i32,
-        };
+        limit: i64,
+        job_types: &[&str],
+    ) -> Result<Vec<HashMap<String, String>>> {
+        let job_types_str = job_types
+            .iter()
+            .map(|t| format!("'{}'", t))
+            .collect::<Vec<_>>()
+            .join(", ");
 
-        self.create_job(&job).await
+        let query = format!(
+            r#"
+            SELECT * FROM jobs 
+            WHERE status = 'pending' 
+            AND scheduled_at <= NOW()
+            AND job_type IN ({})
+            ORDER BY priority DESC, scheduled_at ASC
+            LIMIT $1
+            "#,
+            job_types_str
+        );
+
+        let rows = sqlx::query(&query)
+            .bind(limit)
+            .fetch_all(&self.pool)
+            .await?;
+
+        Ok(rows.into_iter().map(row_to_hashmap).collect())
     }
+}
 
-    pub async fn create_recurring_job(
-        &self,
-        id: &str,
-        payload: &serde_json::Value,
-        schedule: &str,
-        max_retries: i32,
-    ) -> Result<(), Error> {
-        let job = Job {
-            id: id.to_string(),
-            schedule_type: ScheduleType::Recurring,
-            schedule: schedule.to_string(),
-            payload: payload.clone(),
-            status: JobStatus::Pending,
-            created_at: Utc::now(),
-            updated_at: Utc::now(),
-            retries: 0,
-            max_retries: max_retries as i32,
-        };
-
-        self.create_job(&job).await
+fn row_to_hashmap(row: &PgRow) -> HashMap<String, String> {
+    let mut map = HashMap::new();
+    for column in row.columns() {
+        if let Ok(value) = row.try_get::<String, _>(column.name()) {
+            map.insert(column.name().to_string(), value);
+        }
     }
-
-    pub async fn create_polling_job(
-        &self,
-        id: &str,
-        payload: &serde_json::Value,
-        interval: i32,
-        max_attempts: i32,
-    ) -> Result<(), Error> {
-        let polling_config = serde_json::json!({
-            "interval": interval,
-            "max_attempts": max_attempts
-        });
-
-        let job = Job {
-            id: id.to_string(),
-            schedule_type: ScheduleType::Polling,
-            schedule: polling_config.to_string(),
-            payload: payload.clone(),
-            status: JobStatus::Pending,
-            created_at: Utc::now(),
-            updated_at: Utc::now(),
-            retries: 0,
-            max_retries: max_attempts,
-        };
-
-        self.create_job(&job).await
-    }
-
-    pub async fn update_one_time_job(
-        &self,
-        id: &str,
-        payload: Option<&serde_json::Value>,
-        scheduled_at: Option<DateTime<Utc>>,
-        max_retries: Option<i32>,
-    ) -> Result<Job, Error> {
-        let schedule = scheduled_at.map(|dt| dt.to_rfc3339());
-        self.update_job(
-            id,
-            Some(ScheduleType::OneTime),
-            schedule.as_deref(),
-            payload,
-            max_retries,
-        )
-        .await?
-        .ok_or_else(|| Error::NotFound(format!("Job with id {} not found", id)))
-    }
+    map
 }

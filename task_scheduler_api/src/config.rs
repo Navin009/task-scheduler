@@ -5,6 +5,7 @@ use regex::Regex;
 use rocket::serde::Deserialize;
 use rocket::serde::Serialize;
 use scheduler_core::Database;
+use scheduler_core::task::TaskManager;
 use serde_yaml::Value;
 use sqlx::postgres::PgPool;
 use sqlx::{Pool, Postgres};
@@ -14,14 +15,15 @@ use crate::guard::basic_auth::BasicAuth;
 
 #[derive(Debug, Clone)]
 pub struct AppConfig {
-    pub scheduler_db: Database,
+    pub task_manager: TaskManager,
     pub config: HashMap<String, Value>,
 }
 
 impl AppConfig {
     pub fn new(postgres: PgPool) -> Self {
+        let db = Database::new(postgres);
         Self {
-            scheduler_db: Database::new(postgres),
+            task_manager: TaskManager::new(db),
             config: HashMap::new(),
         }
     }

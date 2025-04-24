@@ -1,6 +1,6 @@
+use crate::models::ScheduleType;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use crate::models::{Job, ScheduleType, JobStatus, Template};
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct JobCreate {
@@ -47,4 +47,4 @@ pub struct TemplateResponse {
 #[derive(Debug, Serialize)]
 pub struct DeleteResponse {
     pub message: String,
-} 
+}

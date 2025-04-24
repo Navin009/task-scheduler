@@ -32,4 +32,6 @@ async fn rocket() -> Rocket<Build> {
         .manage(app_config)
         .attach(LoggerFairing)
         .mount("/", handlers::ping_routes())
+        .mount("/", handlers::jobs_routes())
+        .mount("/", handlers::templates_routes())
 }

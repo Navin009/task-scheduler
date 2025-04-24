@@ -1,22 +1,27 @@
+use crate::models::ScheduleType;
+use crate::{Error, Job, JobStatus};
 use sqlx::{Pool, Postgres};
-use crate::{Job, JobStatus, Error};
 
+#[derive(Debug, Clone)]
 pub struct Database {
     pool: Pool<Postgres>,
 }
 
 impl Database {
-    pub async fn new(database_url: &str) -> Result<Self, Error> {
-        let pool = Pool::<Postgres>::connect(database_url).await?;
-        sqlx::migrate!().run(&pool).await?;
-        Ok(Database { pool })
+    pub fn new(pool: Pool<Postgres>) -> Self {
+        Database { pool }
+    }
+
+    pub async fn execute_query(&self, query: &str) -> Result<Vec<sqlx::postgres::PgRow>, Error> {
+        let rows = sqlx::query(query).fetch_all(&self.pool).await?;
+        Ok(rows)
     }
 
     pub async fn create_job(&self, job: &Job) -> Result<(), Error> {
         sqlx::query(
             r#"INSERT INTO jobs 
             (id, schedule_type, schedule, payload, status, retries, max_retries)
-            VALUES ($1, $2, $3, $4, $5, $6, $7)"#
+            VALUES ($1, $2, $3, $4, $5, $6, $7)"#,
         )
         .bind(&job.id)
         .bind(&job.schedule_type)
@@ -35,12 +40,56 @@ impl Database {
             r#"SELECT * FROM jobs 
             WHERE status = $1
             ORDER BY created_at ASC
-            LIMIT $2"#
+            LIMIT $2"#,
         )
         .bind(JobStatus::Pending)
         .bind(batch_size)
         .fetch_all(&self.pool)
         .await?;
         Ok(jobs)
+    }
+
+    pub async fn get_job(&self, id: &str) -> Result<Option<Job>, Error> {
+        let job = sqlx::query_as::<_, Job>(r#"SELECT * FROM jobs WHERE id = $1"#)
+            .bind(id)
+            .fetch_optional(&self.pool)
+            .await?;
+        Ok(job)
+    }
+
+    pub async fn update_job(
+        &self,
+        id: &str,
+        schedule_type: Option<ScheduleType>,
+        schedule: Option<&str>,
+        payload: Option<&serde_json::Value>,
+        max_retries: Option<i32>,
+    ) -> Result<Option<Job>, Error> {
+        let job = sqlx::query_as::<_, Job>(
+            r#"UPDATE jobs 
+            SET schedule_type = COALESCE($2, schedule_type),
+                schedule = COALESCE($3, schedule),
+                payload = COALESCE($4, payload),
+                max_retries = COALESCE($5, max_retries),
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = $1
+            RETURNING *"#,
+        )
+        .bind(id)
+        .bind(schedule_type)
+        .bind(schedule)
+        .bind(payload)
+        .bind(max_retries)
+        .fetch_optional(&self.pool)
+        .await?;
+        Ok(job)
+    }
+
+    pub async fn delete_job(&self, id: &str) -> Result<(), Error> {
+        sqlx::query(r#"DELETE FROM jobs WHERE id = $1"#)
+            .bind(id)
+            .execute(&self.pool)
+            .await?;
+        Ok(())
     }
 }

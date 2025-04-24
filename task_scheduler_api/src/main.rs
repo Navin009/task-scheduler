@@ -17,9 +17,15 @@ mod security;
 async fn rocket() -> Rocket<Build> {
     AppConfig::init_logger();
 
-    let app_config = AppConfig::new()
+    let config = AppConfig::init_app_config()
         .await
         .expect("Failed to initialize app config");
+
+    let postgres = AppConfig::init_db(&config)
+        .await
+        .expect("Failed to initialize database connection");
+
+    let app_config = AppConfig::new(postgres);
 
     rocket::build()
         .manage(JWTAuthenticator::new())

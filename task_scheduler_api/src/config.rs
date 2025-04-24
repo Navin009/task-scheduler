@@ -2,26 +2,28 @@ use dotenv::dotenv;
 use env_logger::Builder;
 use log::LevelFilter;
 use regex::Regex;
+use rocket::serde::Deserialize;
+use rocket::serde::Serialize;
+use scheduler_core::Database;
 use serde_yaml::Value;
+use sqlx::postgres::PgPool;
 use sqlx::{Pool, Postgres};
 use std::{collections::HashMap, env, fs::File, io::Read};
 
 use crate::guard::basic_auth::BasicAuth;
 
+#[derive(Debug, Clone)]
 pub struct AppConfig {
-    pub postgres: Pool<Postgres>,
+    pub scheduler_db: Database,
     pub config: HashMap<String, Value>,
 }
 
 impl AppConfig {
-    pub async fn new() -> Result<AppConfig, Box<dyn std::error::Error>> {
-        dotenv().ok();
-
-        let config = AppConfig::init_app_config().await?;
-
-        let postgres = AppConfig::init_db(&config).await?;
-
-        Ok(AppConfig { postgres, config })
+    pub fn new(postgres: PgPool) -> Self {
+        Self {
+            scheduler_db: Database::new(postgres),
+            config: HashMap::new(),
+        }
     }
 
     pub async fn init_db(

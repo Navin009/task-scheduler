@@ -1,6 +1,7 @@
 use rocket::Request;
 use rocket::http::Status;
 use rocket::response::{Responder, Response};
+use scheduler_core::error::Error as SchedulerError;
 use serde_json::json;
 use std::fmt;
 use thiserror::Error;
@@ -30,6 +31,19 @@ pub enum ApiError {
     InternalServerError(String),
     DatabaseError(String),
     RedisError(String),
+}
+
+impl From<SchedulerError> for ApiError {
+    fn from(error: SchedulerError) -> Self {
+        match error {
+            SchedulerError::DatabaseError(e) => ApiError::DatabaseError(e.to_string()),
+            SchedulerError::RedisError(e) => ApiError::RedisError(e.to_string()),
+            SchedulerError::ConfigError(e) => ApiError::InternalServerError(e),
+            SchedulerError::ValidationError(e) => ApiError::BadRequest(e),
+            SchedulerError::SerializationError(e) => ApiError::InternalServerError(e.to_string()),
+            SchedulerError::MigrationError(e) => ApiError::InternalServerError(e.to_string()),
+        }
+    }
 }
 
 impl fmt::Display for ApiError {

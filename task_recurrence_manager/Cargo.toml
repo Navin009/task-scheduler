@@ -4,3 +4,14 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+scheduler_core = { path = "../scheduler_core" }
+tokio = { version = "1.36", features = ["full"] }
+chrono = "0.4"
+chrono-tz = "0.10.3"
+cron_parser = "0.8"
+tracing = "0.1"
+tracing-subscriber = "0.3"
+anyhow = "1.0"
+serde_json = "1.0"
+thiserror = "2.0.12"
+uuid = { version = "1.7", features = ["v4"] }

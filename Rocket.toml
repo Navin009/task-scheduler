@@ -1,0 +1,26 @@
+[default]
+address = "127.0.0.1"
+port = 8000
+workers = 4
+log_level = "normal"
+
+[default.databases]
+task_scheduler = { url = "postgres://taskscheduler:taskscheduler@localhost:5432/taskscheduler", pool_size = 5 }
+
+[development]
+address = "127.0.0.1"
+port = 8000
+workers = 4
+log_level = "debug"
+
+[development.databases]
+task_scheduler = { url = "postgres://taskscheduler:taskscheduler@localhost:5432/taskscheduler", pool_size = 5 }
+
+[production]
+address = "0.0.0.0"
+port = 8000
+workers = 8
+log_level = "critical"
+
+[production.databases]
+task_scheduler = { url = "postgres://taskscheduler:taskscheduler@localhost:5432/taskscheduler", pool_size = 20 } 

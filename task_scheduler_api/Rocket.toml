@@ -2,9 +2,7 @@
 address = "127.0.0.1"
 port = 8000
 workers = 4
-keep_alive = 5
-log_level = "normal"
-limits = { json = "10 MiB" }
+log_level = "info"
 
-[default.databases.task_scheduler]
-url = "postgres://postgres:postgres@localhost:5432/task_scheduler" 
+[default.databases]
+task_scheduler = { url = "postgres://postgres:postgres@localhost:5432/task_scheduler" } 

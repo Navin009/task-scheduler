@@ -4,15 +4,12 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-# Depend on the shared core library (using a path dependency within the workspace)
 scheduler_core = { path = "../scheduler_core" }
-
-# rocket-web for building the API
 rocket = { version = "0.5.1", features = ["secrets", "json"] }
-rocket_sync_db_pools = { version = "0.1.0-rc.4" }
+rocket_db_pools = { version = "0.2.0", features = ["sqlx_postgres"] }
 rocket_dyn_templates = { version = "0.2.0" }
 rocket_okapi = { version = "0.9.0", features = ["swagger"] }
-
+sqlx = { version = "0.8.5", features = ["runtime-tokio-rustls", "postgres", "chrono"] }
 # Additional dependencies
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"

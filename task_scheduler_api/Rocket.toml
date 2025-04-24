@@ -1,8 +1,4 @@
 [default]
 address = "127.0.0.1"
 port = 8000
-workers = 4
-log_level = "info"
-
-[default.databases]
-task_scheduler = { url = "postgres://postgres:postgres@localhost:5432/task_scheduler" } 
+log_level = "normal"

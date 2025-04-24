@@ -1,0 +1,24 @@
+app:
+  name: "My Rust App"
+  version: "1.0.0"
+
+server:
+  authentication:
+    basic:
+      username: ${AUTH_USERNAME:admin}
+      password: ${AUTH_PASSWORD:password}
+
+database:
+  postgresql:
+    host: ${DATABASE_HOST:localhost}
+    port: ${DATABASE_PORT:5432}
+    user: ${DATABASE_USER:taskscheduler}
+    password: ${DATABASE_PASSWORD:taskscheduler}
+    database: task_scheduler
+
+logging:
+  level: "info"
+  file: "/var/log/my_rust_app.log"
+  formats:
+    - "json"
+    - "text"

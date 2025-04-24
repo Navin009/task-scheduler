@@ -1,0 +1,17 @@
+[package]
+name = "task_scheduler_migrations"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+sqlx = { version = "0.8.3", features = [
+    "runtime-tokio-rustls",
+    "postgres",
+    "macros",
+    "chrono",
+    "uuid",
+    "json",
+] }
+tokio = { version = "1.44.2", features = ["full"] }
+log = "0.4.22"
+thiserror = "1.0.56" 

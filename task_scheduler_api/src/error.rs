@@ -1,8 +1,27 @@
+use rocket::Request;
 use rocket::http::Status;
 use rocket::response::{Responder, Response};
-use rocket::Request;
 use serde_json::json;
 use std::fmt;
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+pub enum Error {
+    #[error("Database error: {0}")]
+    DatabaseError(#[from] sqlx::Error),
+
+    #[error("Configuration error: {0}")]
+    ConfigError(String),
+
+    #[error("Migration error: {0}")]
+    MigrationError(String),
+
+    #[error("Authentication error: {0}")]
+    AuthError(String),
+
+    #[error("Validation error: {0}")]
+    ValidationError(String),
+}
 
 #[derive(Debug)]
 pub enum ApiError {
@@ -43,7 +62,10 @@ impl<'r> Responder<'r, 'static> for ApiError {
         Response::build()
             .status(status)
             .header(rocket::http::ContentType::JSON)
-            .sized_body(body.to_string().len(), std::io::Cursor::new(body.to_string()))
+            .sized_body(
+                body.to_string().len(),
+                std::io::Cursor::new(body.to_string()),
+            )
             .ok()
     }
 }
@@ -61,4 +83,4 @@ pub fn unprocessable_entity() -> String {
 #[catch(500)]
 pub fn internal_server_error() -> String {
     "Whoops! Looks like we messed up.".to_string()
-} 
+}

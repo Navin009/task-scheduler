@@ -10,7 +10,7 @@
 
 1. Start the PostgreSQL and Redis services:
 ```bash
-docker compose -f docker-compose.dev.yml up -d
+docker compose -f docker-compose.dev.yml up -d postges redis
 ```
 
 2. The services will be available at:
@@ -22,17 +22,17 @@ docker compose -f docker-compose.dev.yml up -d
 
 3. To stop the services:
 ```bash
-docker compose -f docker-compose.dev.yml down
+docker compose -f docker-compose.yml down postgres redis
 ```
 
 4. To view logs:
 ```bash
-docker compose -f docker-compose.dev.yml logs -f
+docker compose -f docker-compose.yml logs -f
 ```
 
 5. To remove volumes and start fresh:
 ```bash
-docker compose -f docker-compose.dev.yml down -v
+docker compose -f docker-compose.yml down -v
 ```
 
 ### Database Migrations

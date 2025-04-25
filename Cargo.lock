@@ -3319,6 +3319,7 @@ dependencies = [
  "cron-parser",
  "scheduler_core",
  "serde_json",
+ "sqlx 0.8.5",
  "thiserror 2.0.12",
  "tokio",
  "tracing",
@@ -3330,6 +3331,7 @@ dependencies = [
 name = "task_scheduler_api"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "base64 0.22.1",
  "chrono",
  "cron-parser",

@@ -1,8 +1,10 @@
+use crate::models::Template;
 use anyhow::Result;
 use sqlx::postgres::{PgPool, PgRow};
 use sqlx::{Column, Row};
 use std::collections::HashMap;
 
+#[derive(Debug, Clone)]
 pub struct Database {
     pool: PgPool,
 }
@@ -109,6 +111,73 @@ impl Database {
             .await?;
 
         Ok(rows.iter().map(row_to_hashmap).collect())
+    }
+
+    pub async fn get_jobs_by_status(&self, status: &str) -> Result<Vec<HashMap<String, String>>> {
+        let query = r#"
+            SELECT * FROM jobs 
+            WHERE status = $1
+            ORDER BY priority DESC, scheduled_at ASC
+        "#;
+
+        let rows = sqlx::query(query)
+            .bind(status)
+            .fetch_all(&self.pool)
+            .await?;
+
+        Ok(rows.iter().map(row_to_hashmap).collect())
+    }
+
+    pub async fn get_jobs_older_than(
+        &self,
+        cutoff_time: &str,
+    ) -> Result<Vec<HashMap<String, String>>> {
+        let query = r#"
+            SELECT * FROM jobs 
+            WHERE created_at < $1
+            ORDER BY created_at ASC
+        "#;
+
+        let rows = sqlx::query(query)
+            .bind(cutoff_time)
+            .fetch_all(&self.pool)
+            .await?;
+
+        Ok(rows.iter().map(row_to_hashmap).collect())
+    }
+
+    pub async fn get_jobs_by_status_and_time(
+        &self,
+        status: &str,
+        cutoff_time: &str,
+    ) -> Result<Vec<HashMap<String, String>>> {
+        let query = r#"
+            SELECT * FROM jobs 
+            WHERE status = $1 AND created_at < $2
+            ORDER BY created_at ASC
+        "#;
+
+        let rows = sqlx::query(query)
+            .bind(status)
+            .bind(cutoff_time)
+            .fetch_all(&self.pool)
+            .await?;
+
+        Ok(rows.iter().map(row_to_hashmap).collect())
+    }
+
+    pub async fn get_active_templates(&self) -> Result<Vec<Template>> {
+        let query = r#"
+            SELECT * FROM templates 
+            WHERE active = true
+            ORDER BY created_at ASC
+        "#;
+
+        let rows = sqlx::query_as::<_, Template>(query)
+            .fetch_all(&self.pool)
+            .await?;
+
+        Ok(rows)
     }
 }
 

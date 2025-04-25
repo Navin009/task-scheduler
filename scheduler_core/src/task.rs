@@ -3,7 +3,7 @@ use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Job {
     pub id: String,
     pub job_type: JobType,
@@ -16,14 +16,14 @@ pub struct Job {
     pub payload: HashMap<String, String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum JobType {
     OneTime,
     Recurring,
     Polling,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum JobStatus {
     Pending,
     Queued,
@@ -32,6 +32,7 @@ pub enum JobStatus {
     Failed,
 }
 
+#[derive(Debug, Clone)]
 pub struct TaskManager {
     db: Database,
 }
@@ -168,6 +169,123 @@ impl TaskManager {
             })
             .collect())
     }
+
+    pub async fn get_jobs_by_status(&self, status: JobStatus) -> Result<Vec<Job>> {
+        let job_data = self.db.get_jobs_by_status(&status.to_string()).await?;
+
+        Ok(job_data
+            .into_iter()
+            .map(|data| Job {
+                id: data.get("id").unwrap().clone(),
+                job_type: match data.get("job_type").unwrap().as_str() {
+                    "one_time" => JobType::OneTime,
+                    "recurring" => JobType::Recurring,
+                    "polling" => JobType::Polling,
+                    _ => panic!("Invalid job type"),
+                },
+                status: match data.get("status").unwrap().as_str() {
+                    "pending" => JobStatus::Pending,
+                    "queued" => JobStatus::Queued,
+                    "running" => JobStatus::Running,
+                    "completed" => JobStatus::Completed,
+                    "failed" => JobStatus::Failed,
+                    _ => panic!("Invalid job status"),
+                },
+                priority: data.get("priority").unwrap().parse().unwrap(),
+                scheduled_at: data.get("scheduled_at").unwrap().clone(),
+                parent_job_id: data.get("parent_job_id").map(|s| s.clone()),
+                max_attempts: data.get("max_attempts").unwrap().parse().unwrap(),
+                attempts: data.get("attempts").unwrap().parse().unwrap(),
+                payload: serde_json::from_str(data.get("payload").unwrap()).unwrap(),
+            })
+            .collect())
+    }
+
+    pub async fn get_jobs_older_than(
+        &self,
+        cutoff_time: chrono::DateTime<chrono::Utc>,
+    ) -> Result<Vec<Job>> {
+        let job_data = self
+            .db
+            .get_jobs_older_than(&cutoff_time.to_rfc3339())
+            .await?;
+        Ok(job_data
+            .into_iter()
+            .map(|data| Job {
+                id: data.get("id").unwrap().clone(),
+                job_type: match data.get("job_type").unwrap().as_str() {
+                    "one_time" => JobType::OneTime,
+                    "recurring" => JobType::Recurring,
+                    "polling" => JobType::Polling,
+                    _ => panic!("Invalid job type"),
+                },
+                status: match data.get("status").unwrap().as_str() {
+                    "pending" => JobStatus::Pending,
+                    "queued" => JobStatus::Queued,
+                    "running" => JobStatus::Running,
+                    "completed" => JobStatus::Completed,
+                    "failed" => JobStatus::Failed,
+                    _ => panic!("Invalid job status"),
+                },
+                priority: data.get("priority").unwrap().parse().unwrap(),
+                scheduled_at: data.get("scheduled_at").unwrap().clone(),
+                parent_job_id: data.get("parent_job_id").map(|s| s.clone()),
+                max_attempts: data.get("max_attempts").unwrap().parse().unwrap(),
+                attempts: data.get("attempts").unwrap().parse().unwrap(),
+                payload: serde_json::from_str(data.get("payload").unwrap()).unwrap(),
+            })
+            .collect())
+    }
+
+    pub async fn get_jobs_by_status_and_time(
+        &self,
+        status: JobStatus,
+        cutoff_time: chrono::DateTime<chrono::Utc>,
+    ) -> Result<Vec<Job>> {
+        let job_data = self
+            .db
+            .get_jobs_by_status_and_time(&status.to_string(), &cutoff_time.to_rfc3339())
+            .await?;
+        Ok(job_data
+            .into_iter()
+            .map(|data| Job {
+                id: data.get("id").unwrap().clone(),
+                job_type: match data.get("job_type").unwrap().as_str() {
+                    "one_time" => JobType::OneTime,
+                    "recurring" => JobType::Recurring,
+                    "polling" => JobType::Polling,
+                    _ => panic!("Invalid job type"),
+                },
+                status: match data.get("status").unwrap().as_str() {
+                    "pending" => JobStatus::Pending,
+                    "queued" => JobStatus::Queued,
+                    "running" => JobStatus::Running,
+                    "completed" => JobStatus::Completed,
+                    "failed" => JobStatus::Failed,
+                    _ => panic!("Invalid job status"),
+                },
+                priority: data.get("priority").unwrap().parse().unwrap(),
+                scheduled_at: data.get("scheduled_at").unwrap().clone(),
+                parent_job_id: data.get("parent_job_id").map(|s| s.clone()),
+                max_attempts: data.get("max_attempts").unwrap().parse().unwrap(),
+                attempts: data.get("attempts").unwrap().parse().unwrap(),
+                payload: serde_json::from_str(data.get("payload").unwrap()).unwrap(),
+            })
+            .collect())
+    }
+
+    pub async fn move_to_dead_letter_queue(&self, job_id: &str, queue_name: &str) -> Result<bool> {
+        let mut updates = HashMap::new();
+        updates.insert("status", JobStatus::Failed.to_string());
+        updates.insert("dead_letter_queue", queue_name.to_string());
+        self.db.update_job(job_id, &updates).await
+    }
+
+    pub async fn archive_job(&self, job_id: &str) -> Result<bool> {
+        let mut updates: HashMap<&str, String> = HashMap::new();
+        updates.insert("archived", "true".to_string());
+        self.db.update_job(job_id, &updates).await
+    }
 }
 
 impl ToString for JobStatus {
@@ -178,6 +296,16 @@ impl ToString for JobStatus {
             JobStatus::Running => "running".to_string(),
             JobStatus::Completed => "completed".to_string(),
             JobStatus::Failed => "failed".to_string(),
+        }
+    }
+}
+
+impl std::fmt::Display for JobType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            JobType::OneTime => write!(f, "one_time"),
+            JobType::Recurring => write!(f, "recurring"),
+            JobType::Polling => write!(f, "polling"),
         }
     }
 }

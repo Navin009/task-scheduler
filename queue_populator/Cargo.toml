@@ -2,6 +2,16 @@
 name = "queue_populator"
 version = "0.1.0"
 edition = "2021"
+authors = ["Your Name <your.email@example.com>"]
+description = "Queue populator service for the task scheduler system"
+
+[lib]
+name = "queue_populator"
+path = "src/lib.rs"
+
+[[bin]]
+name = "queue_populator"
+path = "src/main.rs"
 
 [dependencies]
 scheduler_core = { path = "../scheduler_core" }

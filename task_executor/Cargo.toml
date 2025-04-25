@@ -1,7 +1,17 @@
 [package]
 name = "task_executor"
 version = "0.1.0"
-edition = "2024"
+edition = "2021"
+authors = ["Your Name <your.email@example.com>"]
+description = "Task executor service for the task scheduler system"
+
+[lib]
+name = "task_executor"
+path = "src/lib.rs"
+
+[[bin]]
+name = "task_executor"
+path = "src/main.rs"
 
 [dependencies]
 # Depend on the shared core library

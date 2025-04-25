@@ -1,6 +1,6 @@
 use chrono::{DateTime, Duration, Utc};
 use scheduler_core::{
-    cache::RedisClient,
+    cache::Cache,
     db::Database,
     models::{Job, Template},
 };
@@ -13,7 +13,7 @@ use crate::{
 
 pub struct RecurrenceManager {
     db: Database,
-    cache: RedisClient,
+    cache: Cache,
     expander: ScheduleExpander,
     optimizer: ScheduleOptimizer,
     look_ahead_window: Duration,
@@ -22,7 +22,7 @@ pub struct RecurrenceManager {
 impl RecurrenceManager {
     pub async fn new(
         db: Database,
-        cache: RedisClient,
+        cache: Cache,
         timezone: chrono_tz::Tz,
         look_ahead_window: Duration,
     ) -> Result<Self, Error> {
@@ -34,9 +34,8 @@ impl RecurrenceManager {
             look_ahead_window,
         })
     }
-
     pub async fn process_templates(&self) -> Result<(), Error> {
-        let templates = self.db.get_active_templates().await?;
+        let templates = self.db.get_active_templates().await.map_err(Error::from)?;
         let now = Utc::now();
         let end_time = now + self.look_ahead_window;
 
@@ -65,12 +64,22 @@ impl RecurrenceManager {
         let job_batches = self.optimizer.batch_jobs(jobs);
 
         // Store jobs in database and queue
+        let job_batches_clone = job_batches.clone();
         for batch in job_batches {
-            self.db.create_jobs(&batch).await?;
+            for job in &batch {
+                let mut job_data = std::collections::HashMap::new();
+                job_data.insert("job_type", String::from(job.schedule_type.clone()));
+                job_data.insert("status", format!("{:?}", job.status));
+                job_data.insert("schedule", job.schedule.clone());
+                job_data.insert("payload", job.payload.to_string());
+                job_data.insert("max_retries", job.max_retries.to_string());
+                job_data.insert("retries", job.retries.to_string());
+                self.db.create_job(&job_data).await?;
+            }
 
             // Queue jobs for execution
             for job in batch {
-                if let Err(e) = self.cache.push_job(&job).await {
+                if let Err(e) = self.cache.push_to_queue("default", &job.id).await {
                     warn!("Failed to queue job {}: {}", job.id, e);
                 }
             }
@@ -79,7 +88,7 @@ impl RecurrenceManager {
         info!(
             "Processed template {}: created {} jobs",
             template.id,
-            job_batches.iter().map(|b| b.len()).sum::<usize>()
+            job_batches_clone.iter().map(|b| b.len()).sum::<usize>()
         );
 
         Ok(())
@@ -99,7 +108,9 @@ impl RecurrenceManager {
             for job in jobs {
                 let adjusted_time = self.expander.handle_daylight_saving(job.created_at);
                 if adjusted_time != job.created_at {
-                    self.db.update_job_schedule(&job.id, &adjusted_time).await?;
+                    let mut updates = std::collections::HashMap::new();
+                    updates.insert("scheduled_at", adjusted_time.to_rfc3339());
+                    self.db.update_job(&job.id, &updates).await?;
                 }
             }
         }

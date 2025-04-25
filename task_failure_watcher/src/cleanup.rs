@@ -1,9 +1,6 @@
 use anyhow::Result;
 use chrono::{DateTime, Duration, Utc};
-use scheduler_core::{
-    models::{Job, JobStatus},
-    task::TaskManager,
-};
+use scheduler_core::task::{Job, JobStatus, TaskManager};
 use tracing::{error, info};
 
 pub struct CleanupManager {

@@ -2,6 +2,16 @@
 name = "task_failure_watcher"
 version = "0.1.0"
 edition = "2021"
+authors = ["Your Name <your.email@example.com>"]
+description = "Failure watcher service for the task scheduler system"
+
+[lib]
+name = "task_failure_watcher"
+path = "src/lib.rs"
+
+[[bin]]
+name = "task_failure_watcher"
+path = "src/main.rs"
 
 [dependencies]
 scheduler_core = { path = "../scheduler_core" }

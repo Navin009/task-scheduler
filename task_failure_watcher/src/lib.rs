@@ -1,38 +1,31 @@
-pub mod error;
-pub mod manager;
-pub mod schedule;
-
-pub use error::Error;
-pub use manager::RecurrenceManager;
-
 use anyhow::Result;
 use tokio::sync::broadcast;
 
-pub struct Manager {
+pub struct Watcher {
     // Add necessary fields here
 }
 
-impl Manager {
+impl Watcher {
     pub async fn new() -> Result<Self> {
-        // Initialize the manager
+        // Initialize the watcher
         Ok(Self {
             // Initialize fields
         })
     }
 
-    pub async fn start(&self) -> Result<ManagerHandle> {
-        // Start the manager and return a handle
-        Ok(ManagerHandle {
+    pub async fn start(&self) -> Result<WatcherHandle> {
+        // Start the watcher and return a handle
+        Ok(WatcherHandle {
             // Initialize handle fields
         })
     }
 }
 
-pub struct ManagerHandle {
+pub struct WatcherHandle {
     // Add necessary fields here
 }
 
-impl ManagerHandle {
+impl WatcherHandle {
     pub async fn shutdown(&self) -> Result<()> {
         // Implement shutdown logic
         Ok(())

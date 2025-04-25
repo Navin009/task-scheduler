@@ -8,6 +8,7 @@ pub struct CacheConfig {
     pub max_connections: u32,
 }
 
+#[derive(Clone)]
 pub struct Cache {
     client: Client,
 }

@@ -1,4 +1,5 @@
 use chrono::{DateTime, Duration, Utc};
+use cron_parser::ParseError;
 use cron_parser::parse;
 use scheduler_core::models::{Job, ScheduleType, Template};
 use std::collections::HashSet;
@@ -22,29 +23,28 @@ impl ScheduleExpander {
         let mut current_time = start_time;
 
         while current_time <= end_time {
-            if let Some(next_time) = parse(&template.cron_pattern, &current_time) {
-                if next_time > end_time {
-                    break;
+            match parse(&template.cron_pattern, &current_time) {
+                Ok(next_time) => {
+                    if next_time > end_time {
+                        break;
+                    }
+
+                    let job = Job {
+                        id: uuid::Uuid::new_v4().to_string(),
+                        schedule_type: ScheduleType::Recurring,
+                        schedule: template.cron_pattern.clone(),
+                        payload: template.payload_template.clone(),
+                        status: scheduler_core::models::JobStatus::Pending,
+                        created_at: Utc::now(),
+                        updated_at: Utc::now(),
+                        retries: 0,
+                        max_retries: 3,
+                    };
+
+                    jobs.push(job);
+                    current_time = next_time + Duration::seconds(1);
                 }
-
-                let job = Job {
-                    id: uuid::Uuid::new_v4().to_string(),
-                    schedule_type: ScheduleType::Recurring,
-                    schedule: template.cron_pattern.clone(),
-                    payload: template.payload_template.clone(),
-                    status: scheduler_core::models::JobStatus::Pending,
-                    created_at: Utc::now(),
-                    updated_at: Utc::now(),
-                    retries: 0,
-                    max_retries: 3,
-                };
-
-                jobs.push(job);
-                current_time = next_time + Duration::seconds(1);
-            } else {
-                return Err(crate::error::Error::ScheduleParse(
-                    "Failed to parse cron pattern".into(),
-                ));
+                Err(e) => return Err(crate::error::Error::ScheduleParse(e.to_string())),
             }
         }
 

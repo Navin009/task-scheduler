@@ -1,32 +1,29 @@
 use anyhow::Result;
-use chrono::{DateTime, Utc};
 use scheduler_core::{
     cache::Cache,
-    error::SchedulerError,
-    models::{Job, JobStatus},
-    task::TaskManager,
+    task::{Job, JobStatus, JobType, TaskManager},
 };
-use std::time::Duration;
+use std::time::Duration as StdDuration;
 use tokio::time::sleep;
-use tracing::{error, info, warn};
+use tracing::{error, info};
 
 pub struct TaskFailureWatcher {
     task_manager: TaskManager,
     cache: Cache,
-    check_interval: Duration,
+    check_interval: StdDuration,
     max_retries: i32,
-    initial_backoff: Duration,
-    max_backoff: Duration,
+    initial_backoff: StdDuration,
+    max_backoff: StdDuration,
 }
 
 impl TaskFailureWatcher {
     pub fn new(
         task_manager: TaskManager,
         cache: Cache,
-        check_interval: Duration,
+        check_interval: StdDuration,
         max_retries: i32,
-        initial_backoff: Duration,
-        max_backoff: Duration,
+        initial_backoff: StdDuration,
+        max_backoff: StdDuration,
     ) -> Self {
         Self {
             task_manager,
@@ -56,8 +53,9 @@ impl TaskFailureWatcher {
             .await?;
 
         for job in failed_jobs {
+            let job_clone = job.clone();
             if let Err(e) = self.handle_failed_job(job).await {
-                error!("Error handling failed job {}: {}", job.id, e);
+                error!("Error handling failed job {}: {}", job_clone.id, e);
             }
         }
 
@@ -94,9 +92,9 @@ impl TaskFailureWatcher {
         Ok(())
     }
 
-    fn calculate_backoff(&self, retry_count: u32) -> Duration {
+    fn calculate_backoff(&self, retry_count: u32) -> StdDuration {
         let backoff = self.initial_backoff.as_secs() * 2u64.pow(retry_count);
-        Duration::from_secs(backoff.min(self.max_backoff.as_secs()))
+        StdDuration::from_secs(backoff.min(self.max_backoff.as_secs()))
     }
 
     async fn retry_job(&self, mut job: Job) -> Result<()> {

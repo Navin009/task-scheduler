@@ -4,8 +4,7 @@ use log::LevelFilter;
 use regex::Regex;
 use rocket::serde::Deserialize;
 use rocket::serde::Serialize;
-use scheduler_core::Database;
-use scheduler_core::task::TaskManager;
+use scheduler_core::{cache::Cache, config::Config, db::Database, task::TaskManager};
 use serde_yaml::Value;
 use sqlx::postgres::PgPool;
 use sqlx::{Pool, Postgres};
@@ -20,8 +19,7 @@ pub struct AppConfig {
 }
 
 impl AppConfig {
-    pub fn new(postgres: PgPool) -> Self {
-        let db = Database::new(postgres);
+    pub fn new(db: Database, cache: Cache) -> Self {
         Self {
             task_manager: TaskManager::new(db),
             config: HashMap::new(),

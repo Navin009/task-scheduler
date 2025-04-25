@@ -1,17 +1,19 @@
+use alerting::{AlertManager, LogNotificationChannel};
 use anyhow::Result;
 use chrono::Duration;
+use cleanup::CleanupManager;
 use scheduler_core::{
-    cache::Cache, config::Config, db::Database, models::JobStatus, task::TaskManager,
+    cache::{Cache, CacheConfig},
+    config::Config,
+    db::Database,
+    models::JobStatus,
+    task::TaskManager,
 };
 use std::time::Duration as StdDuration;
-use task_failure_watcher::{
-    alerting::{AlertManager, LogNotificationChannel},
-    cleanup::CleanupManager,
-    watcher::TaskFailureWatcher,
-};
 use tokio::signal;
 use tracing::{error, info, Level};
 use tracing_subscriber::FmtSubscriber;
+use watcher::TaskFailureWatcher;
 
 mod alerting;
 mod cleanup;
@@ -39,7 +41,11 @@ async fn main() -> Result<()> {
 
     // Initialize database and cache
     let db = Database::new(&db_config).await?;
-    let cache = Cache::new(redis_config).await?;
+    let cache_config = CacheConfig {
+        url: redis_config,
+        max_connections: 10,
+    };
+    let cache = Cache::new(cache_config).await?;
     let task_manager = TaskManager::new(db.clone());
 
     // Initialize alert manager

@@ -22,7 +22,7 @@ pub struct DbCheckResponse {
 #[get("/ping")]
 pub async fn ping(state: &State<AppConfig>) -> Result<Json<serde_json::Value>, ApiError> {
     // Try to execute a simple query to check database connectivity
-    match state.scheduler_db.get_pending_jobs(1).await {
+    match state.task_manager.get_due_jobs(1).await {
         Ok(_) => Ok(Json(json!({
             "status": "ok",
             "message": "Service is healthy and database is connected"
@@ -49,11 +49,7 @@ pub async fn metrics() -> String {
 #[get("/db-check")]
 pub async fn db_check(state: &State<AppConfig>) -> Json<DbCheckResponse> {
     let timeout_duration = Duration::new(5, 0); // 5 seconds
-    let result = timeout(
-        timeout_duration,
-        state.scheduler_db.execute_query("SELECT 1")
-    )
-    .await;
+    let result = timeout(timeout_duration, state.task_manager.get_due_jobs(1)).await;
 
     let database_connected = match result {
         Ok(Ok(_)) => true,   // Query succeeded within the timeout

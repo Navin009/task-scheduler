@@ -3,6 +3,7 @@ pub mod cache;
 pub mod config;
 pub mod db;
 pub mod error;
+pub mod init;
 pub mod models;
 pub mod task;
 
@@ -14,5 +15,6 @@ pub use cache::{Cache, CacheConfig};
 pub use config::Config;
 pub use db::Database;
 pub use error::Error as SchedulerError;
+pub use init::{init_cache, init_database};
 pub use models::{Job, JobStatus, ScheduleType, Template};
 pub use task::{JobType, TaskManager};

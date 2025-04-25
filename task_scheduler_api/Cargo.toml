@@ -1,10 +1,21 @@
 [package]
 name = "task_scheduler_api"
 version = "0.1.0"
-edition = "2024"
+edition = "2021"
+authors = ["Your Name <your.email@example.com>"]
+description = "API service for the task scheduler system"
+
+[lib]
+name = "task_scheduler_api"
+path = "src/lib.rs"
+
+[[bin]]
+name = "task_scheduler_api"
+path = "src/main.rs"
 
 [dependencies]
 scheduler_core = { path = "../scheduler_core" }
+anyhow = "1.0.86"
 base64 = "0.22.1"
 chrono = { version = "0.4.39", features = ["serde"] }
 cron-parser = "0.10.0"

@@ -16,4 +16,7 @@ pub enum Error {
 
     #[error("Validation error: {0}")]
     Validation(String),
+
+    #[error("Anyhow error: {0}")]
+    Anyhow(#[from] anyhow::Error),
 }

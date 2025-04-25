@@ -1,6 +1,6 @@
 use chrono::{Duration, Utc};
 use chrono_tz::UTC;
-use scheduler_core::{cache::RedisClient, config::Config, db::Database};
+use scheduler_core::{cache::Cache, config::Config, db::Database};
 use task_recurrence_manager::RecurrenceManager;
 use tokio::time;
 use tracing::{error, info};
@@ -11,11 +11,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt::init();
 
     // Load configuration
-    let config = Config::load()?;
+    let config = Config::from_env()?;
 
     // Initialize database and cache
     let db = Database::new(&config.database_url).await?;
-    let cache = RedisClient::new(&config.redis_url)?;
+    let cache_config = scheduler_core::cache::CacheConfig {
+        url: config.redis_url.clone(),
+        max_connections: 10,
+    };
+    let cache = Cache::new(cache_config).await?;
 
     // Create recurrence manager
     let manager = RecurrenceManager::new(

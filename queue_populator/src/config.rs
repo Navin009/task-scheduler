@@ -11,9 +11,9 @@ pub struct QueuePopulatorConfig {
 impl QueuePopulatorConfig {
     pub fn from_core_config(config: &Config) -> Self {
         Self {
-            database_url: config.database.url.clone(),
-            cache_url: config.cache.url.clone(),
-            max_connections: config.cache.max_connections,
+            database_url: config.database_url.clone(),
+            cache_url: config.redis_url.clone(),
+            max_connections: 10, // Default max connections
             poll_interval_seconds: 1, // Default poll interval
         }
     }

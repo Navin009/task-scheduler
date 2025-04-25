@@ -1,4 +1,8 @@
-use scheduler_core::{cache::RedisClient, config::Config, db::Database};
+use scheduler_core::{
+    cache::{Cache, CacheConfig},
+    config::Config,
+    db::Database,
+};
 use std::time::Duration;
 use task_executor::TaskExecutor;
 use tracing::{error, info};
@@ -9,11 +13,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt::init();
 
     // Load configuration
-    let config = Config::load()?;
+    let config = Config::from_env()?;
 
     // Initialize database and cache
     let db = Database::new(&config.database_url).await?;
-    let cache = RedisClient::new(&config.redis_url)?;
+    let cache = Cache::new(CacheConfig {
+        url: config.redis_url,
+        max_connections: 10,
+    })
+    .await?;
 
     // Create task executor
     let executor = TaskExecutor::new(

@@ -22,4 +22,10 @@ pub enum Error {
 
     #[error("Configuration error: {0}")]
     Config(String),
+
+    #[error("Serialization error: {0}")]
+    Serialization(#[from] serde_json::Error),
+
+    #[error("Internal error: {0}")]
+    Internal(#[from] anyhow::Error),
 }

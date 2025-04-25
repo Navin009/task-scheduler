@@ -61,7 +61,7 @@ impl ExecutionState {
 
         self.job.status = JobStatus::Failed;
         self.end_time = Some(Utc::now());
-        self.error = Some(error);
+        self.error = Some(error.clone());
         error!("Job {} failed: {}", self.job.id, error);
         Ok(())
     }
@@ -81,7 +81,7 @@ impl ExecutionState {
             )));
         }
 
-        self.job.status = JobStatus::Retrying;
+        self.job.status = JobStatus::Pending;
         self.job.retries += 1;
         info!(
             "Job {} marked for retry (attempt {}/{})",

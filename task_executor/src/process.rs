@@ -2,6 +2,7 @@ use std::{
     process::{Command, Output},
     time::Duration,
 };
+use sys_info;
 use tokio::time;
 use tracing::{error, info};
 

@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::Semaphore;
 use tracing::{error, info};
@@ -5,18 +6,18 @@ use tracing::{error, info};
 use scheduler_core::{
     cache::Cache,
     db::Database,
-    task::{Job, JobStatus},
+    models::{Job, JobStatus, ScheduleType},
 };
 
 use crate::{error::Error, process::ProcessManager, state::ExecutionState};
 
 #[derive(Clone)]
 pub struct TaskExecutor {
-    db: Database,
-    cache: Cache,
-    process_manager: ProcessManager,
+    db: Arc<Database>,
+    cache: Arc<Cache>,
+    process_manager: Arc<ProcessManager>,
     concurrency_limit: usize,
-    semaphore: Semaphore,
+    semaphore: Arc<Semaphore>,
 }
 
 impl TaskExecutor {
@@ -32,11 +33,11 @@ impl TaskExecutor {
         process_manager.validate_resources()?;
 
         Ok(Self {
-            db,
-            cache,
-            process_manager,
+            db: Arc::new(db),
+            cache: Arc::new(cache),
+            process_manager: Arc::new(process_manager),
             concurrency_limit,
-            semaphore: Semaphore::new(concurrency_limit),
+            semaphore: Arc::new(Semaphore::new(concurrency_limit)),
         })
     }
 
@@ -48,7 +49,7 @@ impl TaskExecutor {
 
         loop {
             // Wait for a permit before processing next job
-            let _permit =
+            let permit =
                 self.semaphore.acquire().await.map_err(|e| {
                     Error::ResourceLimit(format!("Failed to acquire semaphore: {}", e))
                 })?;
@@ -61,14 +62,17 @@ impl TaskExecutor {
                         if let Err(e) = executor.execute_job(job).await {
                             error!("Failed to execute job: {}", e);
                         }
+                        // Permit is automatically released when the task completes
                     });
                 }
                 Ok(None) => {
                     // No jobs available, wait a bit before trying again
+                    drop(permit); // Explicitly release the permit
                     tokio::time::sleep(Duration::from_secs(1)).await;
                 }
                 Err(e) => {
                     error!("Error getting job from queue: {}", e);
+                    drop(permit); // Explicitly release the permit
                     tokio::time::sleep(Duration::from_secs(5)).await;
                 }
             }
@@ -77,7 +81,47 @@ impl TaskExecutor {
 
     async fn get_next_job(&self) -> Result<Option<Job>, Error> {
         if let Some(job_id) = self.cache.pop_from_queue("jobs").await? {
-            if let Some(job) = self.db.get_job(&job_id).await? {
+            if let Some(job_data) = self.db.get_job(&job_id).await? {
+                // Convert HashMap to Job
+                let job = Job {
+                    id: job_data.get("id").unwrap().clone(),
+                    schedule_type: match job_data.get("schedule_type").unwrap().as_str() {
+                        "one_time" => ScheduleType::OneTime,
+                        "recurring" => ScheduleType::Recurring,
+                        "polling" => ScheduleType::Polling,
+                        _ => return Err(Error::Process("Invalid schedule type".into())),
+                    },
+                    schedule: job_data.get("schedule").unwrap().clone(),
+                    payload: serde_json::from_str(job_data.get("payload").unwrap())?,
+                    status: match job_data.get("status").unwrap().as_str() {
+                        "Pending" => JobStatus::Pending,
+                        "Running" => JobStatus::Running,
+                        "Completed" => JobStatus::Completed,
+                        "Failed" => JobStatus::Failed,
+                        "Retrying" => JobStatus::Retrying,
+                        _ => return Err(Error::Process("Invalid job status".into())),
+                    },
+                    created_at: chrono::DateTime::parse_from_rfc3339(
+                        job_data.get("created_at").unwrap(),
+                    )
+                    .map_err(|e| Error::Process(format!("Invalid created_at: {}", e)))?
+                    .with_timezone(&chrono::Utc),
+                    updated_at: chrono::DateTime::parse_from_rfc3339(
+                        job_data.get("updated_at").unwrap(),
+                    )
+                    .map_err(|e| Error::Process(format!("Invalid updated_at: {}", e)))?
+                    .with_timezone(&chrono::Utc),
+                    retries: job_data
+                        .get("retries")
+                        .unwrap()
+                        .parse()
+                        .map_err(|e| Error::Process(format!("Invalid retries: {}", e)))?,
+                    max_retries: job_data
+                        .get("max_retries")
+                        .unwrap()
+                        .parse()
+                        .map_err(|e| Error::Process(format!("Invalid max_retries: {}", e)))?,
+                };
                 return Ok(Some(job));
             }
         }
@@ -90,13 +134,12 @@ impl TaskExecutor {
         // Mark job as running
         state.mark_running()?;
         let mut updates = std::collections::HashMap::new();
-        updates.insert("status", JobStatus::Running.to_string());
+        updates.insert("status", format!("{:?}", JobStatus::Running));
         self.db.update_job(&state.job.id, &updates).await?;
 
         // Parse job payload
         let payload: serde_json::Value =
-            serde_json::from_str(&serde_json::to_string(&state.job.payload)?)
-                .map_err(|e| Error::Process(format!("Invalid job payload: {}", e)))?;
+            serde_json::from_str(&serde_json::to_string(&state.job.payload)?)?;
 
         // Extract command and arguments
         let command = payload["command"]
@@ -119,25 +162,23 @@ impl TaskExecutor {
                 let output_str = String::from_utf8_lossy(&output.stdout).into();
                 state.mark_completed(output_str)?;
                 let mut updates = std::collections::HashMap::new();
-                updates.insert("status", JobStatus::Completed.to_string());
+                updates.insert("status", format!("{:?}", JobStatus::Completed));
                 self.db.update_job(&state.job.id, &updates).await?;
             }
             Err(e) => {
                 let error_str = e.to_string();
                 state.mark_failed(error_str.clone())?;
                 let mut updates = std::collections::HashMap::new();
-                updates.insert("status", JobStatus::Failed.to_string());
+                updates.insert("status", format!("{:?}", JobStatus::Failed));
                 self.db.update_job(&state.job.id, &updates).await?;
 
                 // Check if we should retry
-                if state.job.attempts < state.job.max_attempts {
-                    if let Ok(()) = state.mark_retrying() {
-                        let mut updates = std::collections::HashMap::new();
-                        updates.insert("status", JobStatus::Pending.to_string());
-                        updates.insert("attempts", (state.job.attempts + 1).to_string());
-                        self.db.update_job(&state.job.id, &updates).await?;
-                        self.cache.push_to_queue("jobs", &state.job.id).await?;
-                    }
+                if state.job.retries < state.job.max_retries {
+                    let mut updates = std::collections::HashMap::new();
+                    updates.insert("status", format!("{:?}", JobStatus::Pending));
+                    updates.insert("retries", (state.job.retries + 1).to_string());
+                    self.db.update_job(&state.job.id, &updates).await?;
+                    self.cache.push_to_queue("jobs", &state.job.id).await?;
                 }
             }
         }

@@ -1,4 +1,4 @@
-use scheduler_core::{cache::Cache, models::Job, task::TaskManager};
+use scheduler_core::{cache::Cache, db::Database, models::Job, task::TaskManager};
 use sqlx::PgPool;
 use tracing::{error, info};
 
@@ -11,8 +11,9 @@ pub struct JobProcessor {
 }
 
 impl JobProcessor {
-    pub async fn new(db_pool: PgPool, cache: Cache) -> Result<Self> {
-        let task_manager = TaskManager::new(db_pool.clone());
+    pub async fn new(db_pool: PgPool, cache: Cache, database_url: &str) -> Result<Self> {
+        let db = Database::new(database_url).await.map_err(QueuePopulatorError::from)?;
+        let task_manager = TaskManager::new(db);
         Ok(Self {
             db_pool,
             cache,
@@ -37,14 +38,14 @@ impl JobProcessor {
         Ok(())
     }
 
-    async fn fetch_due_jobs(&self) -> Result<Vec<Job>> {
+    async fn fetch_due_jobs(&self) -> Result<Vec<scheduler_core::task::Job>> {
         self.task_manager
-            .get_due_jobs()
+            .get_due_jobs(100)
             .await
             .map_err(QueuePopulatorError::from)
     }
 
-    async fn push_job_to_queue(&self, job: &Job) -> Result<()> {
+    async fn push_job_to_queue(&self, job: &scheduler_core::task::Job) -> Result<()> {
         let job_json = serde_json::to_string(job)?;
         let queue_name = format!("jobs:{}", job.priority);
 
@@ -54,10 +55,11 @@ impl JobProcessor {
             .map_err(QueuePopulatorError::from)
     }
 
-    async fn update_job_status(&self, job: &Job) -> Result<()> {
+    async fn update_job_status(&self, job: &scheduler_core::task::Job) -> Result<()> {
         self.task_manager
-            .update_job_status(job.id, "queued")
+            .update_job_status(&job.id, scheduler_core::task::JobStatus::Queued)
             .await
-            .map_err(QueuePopulatorError::from)
+            .map_err(QueuePopulatorError::from)?;
+        Ok(())
     }
 }

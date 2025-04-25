@@ -12,12 +12,12 @@ services:
     ports:
       - "5432:5432"
 
-  redis:
-    image: redis:7.2-alpine
+  valkey:
+    image: valkey/valkey:8.0
     ports:
       - "6379:6379"
     volumes:
-      - redis_data:/data
+      - valkey_data:/data
 
   task-scheduler-api:
     build:
@@ -27,10 +27,10 @@ services:
       - "8080:8080"
     depends_on:
       - postgres
-      - redis
+      - valkey
     environment:
       DATABASE_URL: postgres://taskscheduler:taskscheduler@postgres:5432/taskscheduler
-      REDIS_URL: redis://redis:6379
+      REDIS_URL: redis://valkey:6379
       RUST_LOG: debug
 
   queue-populator:
@@ -39,10 +39,10 @@ services:
       dockerfile: queue_populator/Dockerfile
     depends_on:
       - postgres
-      - redis
+      - valkey
     environment:
       DATABASE_URL: postgres://taskscheduler:taskscheduler@postgres:5432/taskscheduler
-      REDIS_URL: redis://redis:6379
+      REDIS_URL: redis://valkey:6379
       RUST_LOG: debug
 
   task-executor:
@@ -51,10 +51,10 @@ services:
       dockerfile: task_executor/Dockerfile
     depends_on:
       - postgres
-      - redis
+      - valkey
     environment:
       DATABASE_URL: postgres://taskscheduler:taskscheduler@postgres:5432/taskscheduler
-      REDIS_URL: redis://redis:6379
+      REDIS_URL: redis://valkey:6379
       RUST_LOG: debug
 
   task-failure-watcher:
@@ -63,10 +63,10 @@ services:
       dockerfile: task_failure_watcher/Dockerfile
     depends_on:
       - postgres
-      - redis
+      - valkey
     environment:
       DATABASE_URL: postgres://taskscheduler:taskscheduler@postgres:5432/taskscheduler
-      REDIS_URL: redis://redis:6379
+      REDIS_URL: redis://valkey:6379
       RUST_LOG: debug
 
   task-recurrence-manager:
@@ -75,12 +75,12 @@ services:
       dockerfile: task_recurrence_manager/Dockerfile
     depends_on:
       - postgres
-      - redis
+      - valkey
     environment:
       DATABASE_URL: postgres://taskscheduler:taskscheduler@postgres:5432/taskscheduler
-      REDIS_URL: redis://redis:6379
+      REDIS_URL: redis://valkey:6379
       RUST_LOG: debug
 
 volumes:
   postgres_data:
-  redis_data:
+  valkey_data:

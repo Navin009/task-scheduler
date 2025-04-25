@@ -1,5 +1,4 @@
 use anyhow::Result;
-use tokio::sync::broadcast;
 
 pub struct Populator {
     // Add necessary fields here

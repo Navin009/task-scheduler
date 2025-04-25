@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use scheduler_core::task::{Job, JobStatus};
+use scheduler_core::task::Job;
 use std::collections::HashMap;
 use tokio::sync::Mutex;
 use tracing::{error, info};

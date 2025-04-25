@@ -53,9 +53,8 @@ impl TaskFailureWatcher {
             .await?;
 
         for job in failed_jobs {
-            let job_clone = job.clone();
             if let Err(e) = self.handle_failed_job(job).await {
-                error!("Error handling failed job {}: {}", job_clone.id, e);
+                error!("Error handling failed job: {}", e);
             }
         }
 
@@ -63,31 +62,13 @@ impl TaskFailureWatcher {
     }
 
     async fn handle_failed_job(&self, job: Job) -> Result<()> {
-        // Check if job has exceeded max retries
+        // If job has exceeded max attempts, move to dead letter queue
         if job.attempts >= job.max_attempts {
-            info!(
-                "Job {} has exceeded maximum retry attempts ({}), moving to dead letter queue",
-                job.id, job.max_attempts
-            );
             self.move_to_dead_letter_queue(job).await?;
-            return Ok(());
+        } else {
+            // Otherwise, retry the job
+            self.retry_job(job).await?;
         }
-
-        // Calculate backoff based on current attempts
-        let backoff = self.calculate_backoff(job.attempts as u32);
-        info!(
-            "Retrying job {} after {} seconds (attempt {}/{})",
-            job.id,
-            backoff.as_secs(),
-            job.attempts + 1,
-            job.max_attempts
-        );
-
-        // Wait for backoff period
-        sleep(backoff).await;
-
-        // Retry the job
-        self.retry_job(job).await?;
 
         Ok(())
     }
@@ -98,22 +79,24 @@ impl TaskFailureWatcher {
     }
 
     async fn retry_job(&self, mut job: Job) -> Result<()> {
-        // Update job status to pending and increment attempts
-        job.status = JobStatus::Pending;
-        job.attempts += 1;
+        // Calculate backoff delay
+        let backoff = self.calculate_backoff(job.attempts as u32);
 
-        // Update job in database
+        // Update job status to retrying
         self.task_manager
-            .update_job_status(&job.id, job.status)
+            .update_job_status(&job.id, JobStatus::Retrying)
             .await?;
-        self.task_manager.increment_job_attempts(&job.id).await?;
 
-        // Push job back to queue
-        if let Some(queue_name) = self.get_queue_name(&job) {
-            self.cache
-                .push_to_priority_queue(&queue_name, &job.id, job.priority)
-                .await?;
-        }
+        // Wait for backoff period
+        sleep(backoff).await;
+
+        // Update job status back to pending for retry
+        self.task_manager
+            .update_job_status(&job.id, JobStatus::Pending)
+            .await?;
+
+        // Increment attempts counter
+        self.task_manager.increment_job_attempts(&job.id).await?;
 
         Ok(())
     }

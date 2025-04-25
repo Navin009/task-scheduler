@@ -59,9 +59,21 @@ impl JobProcessor {
 
     async fn update_job_status(&self, job: &scheduler_core::task::Job) -> Result<()> {
         self.task_manager
-            .update_job_status(&job.id, scheduler_core::task::JobStatus::Queued)
-            .await
-            .map_err(QueuePopulatorError::from)?;
+            .update_job_status(&job.id, scheduler_core::task::JobStatus::Pending)
+            .await?;
+
+        if let Some(queue_name) = self.get_queue_name(&job) {
+            self.cache
+                .push_to_priority_queue(&queue_name, &job.id, job.priority)
+                .await?;
+        }
+
         Ok(())
+    }
+
+    fn get_queue_name(&self, job: &scheduler_core::task::Job) -> Option<String> {
+        // Implement the logic to determine the queue name based on the job
+        // This is a placeholder and should be replaced with the actual implementation
+        None
     }
 }

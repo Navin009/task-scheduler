@@ -1,6 +1,7 @@
 use anyhow::Result;
 use chrono::{DateTime, Duration, Utc};
 use scheduler_core::task::{Job, JobStatus, TaskManager};
+use std::time::Duration as StdDuration;
 use tracing::{error, info};
 
 pub struct CleanupManager {
@@ -21,7 +22,7 @@ impl CleanupManager {
     pub async fn start(&self) -> Result<()> {
         info!("Starting cleanup manager");
         loop {
-            if let Err(e) = self.cleanup().await {
+            if let Err(e) = self.cleanup_old_jobs().await {
                 error!("Error during cleanup: {}", e);
             }
             tokio::time::sleep(self.cleanup_interval.to_std().unwrap()).await;
@@ -51,12 +52,11 @@ impl CleanupManager {
 
     async fn cleanup_old_jobs(&self) -> Result<()> {
         let cutoff_time = Utc::now() - self.max_age;
-        let old_jobs = self.task_manager.get_jobs_older_than(cutoff_time).await?;
+        let jobs = self.task_manager.get_jobs_older_than(cutoff_time).await?;
 
-        for job in old_jobs {
-            if job.status == JobStatus::Completed || job.status == JobStatus::Failed {
-                info!("Archiving old job: {}", job.id);
-                self.archive_job(job).await?;
+        for job in jobs {
+            if let Err(e) = self.archive_job(job).await {
+                error!("Error archiving job: {}", e);
             }
         }
 

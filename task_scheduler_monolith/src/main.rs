@@ -1,6 +1,5 @@
 use anyhow::Result;
 use log::{error, info};
-use std::sync::Arc;
 use tokio::sync::broadcast;
 use tokio::task::JoinHandle;
 

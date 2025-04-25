@@ -94,11 +94,11 @@ impl TaskExecutor {
                     schedule: job_data.get("schedule").unwrap().clone(),
                     payload: serde_json::from_str(job_data.get("payload").unwrap())?,
                     status: match job_data.get("status").unwrap().as_str() {
-                        "Pending" => JobStatus::Pending,
-                        "Running" => JobStatus::Running,
-                        "Completed" => JobStatus::Completed,
-                        "Failed" => JobStatus::Failed,
-                        "Retrying" => JobStatus::Retrying,
+                        "pending" => JobStatus::Pending,
+                        "running" => JobStatus::Running,
+                        "completed" => JobStatus::Completed,
+                        "failed" => JobStatus::Failed,
+                        "retrying" => JobStatus::Retrying,
                         _ => return Err(Error::Process("Invalid job status".into())),
                     },
                     created_at: chrono::DateTime::parse_from_rfc3339(

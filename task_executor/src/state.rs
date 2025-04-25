@@ -24,7 +24,7 @@ impl ExecutionState {
     }
 
     pub fn mark_running(&mut self) -> Result<(), Error> {
-        if self.job.status != JobStatus::Pending {
+        if self.job.status != JobStatus::Pending && self.job.status != JobStatus::Retrying {
             return Err(Error::StateTransition(format!(
                 "Cannot transition to running from {:?}",
                 self.job.status

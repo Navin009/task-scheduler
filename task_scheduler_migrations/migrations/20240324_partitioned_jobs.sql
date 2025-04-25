@@ -24,14 +24,15 @@ CREATE TYPE job_status AS ENUM (
 
 -- Create base jobs table for common fields
 CREATE TABLE jobs (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID NOT NULL DEFAULT gen_random_uuid(),
     schedule_type schedule_type NOT NULL,
     status job_status NOT NULL DEFAULT 'Pending',
     payload JSONB NOT NULL,
     retries INT NOT NULL DEFAULT 0,
     max_retries INT NOT NULL DEFAULT 3,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (schedule_type, id)
 ) PARTITION BY LIST (schedule_type);
 
 -- Create partition for one-time jobs
@@ -85,11 +86,11 @@ ALTER TABLE polling_jobs ADD COLUMN last_check_at TIMESTAMPTZ;
 ALTER TABLE polling_jobs ADD COLUMN next_check_at TIMESTAMPTZ;
 
 -- Create indexes for performance
-CREATE INDEX idx_jobs_status ON jobs(status);
-CREATE INDEX idx_jobs_created_at ON jobs(created_at);
-CREATE INDEX idx_one_time_jobs_scheduled_at ON one_time_jobs(scheduled_at);
-CREATE INDEX idx_recurring_jobs_next_run_at ON recurring_jobs(next_run_at);
-CREATE INDEX idx_polling_jobs_next_check_at ON polling_jobs(next_check_at);
+CREATE INDEX idx_jobs_status ON jobs(schedule_type, status);
+CREATE INDEX idx_jobs_created_at ON jobs(schedule_type, created_at);
+CREATE INDEX idx_one_time_jobs_scheduled_at ON one_time_jobs(schedule_type, scheduled_at);
+CREATE INDEX idx_recurring_jobs_next_run_at ON recurring_jobs(schedule_type, next_run_at);
+CREATE INDEX idx_polling_jobs_next_check_at ON polling_jobs(schedule_type, next_check_at);
 
 -- Create function to update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()

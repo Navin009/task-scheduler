@@ -19,13 +19,28 @@ pub struct Config {
 
 impl Config {
     pub fn from_env() -> Result<Self, Error> {
-        let cfg = config::Config::builder()
-            .add_source(config::Environment::default())
-            .build()
-            .map_err(|e| Error::ConfigError(e.to_string()))?;
+        let mut queue_names = Vec::new();
+        let mut i = 0;
+        while let Ok(queue_name) = env::var(format!("QUEUE_NAMES__{}", i)) {
+            queue_names.push(queue_name);
+            i += 1;
+        }
 
-        cfg.try_deserialize()
-            .map_err(|e| Error::ConfigError(e.to_string()))
+        if queue_names.is_empty() {
+            return Err(Error::ConfigError("No queue names found".to_string()));
+        }
+
+        Ok(Config {
+            database_url: env::var("DATABASE_URL")
+                .map_err(|_| Error::ConfigError("Missing DATABASE_URL".to_string()))?,
+            redis_url: env::var("REDIS_URL")
+                .map_err(|_| Error::ConfigError("Missing REDIS_URL".to_string()))?,
+            max_retries: env::var("MAX_RETRIES")
+                .map_err(|_| Error::ConfigError("Missing MAX_RETRIES".to_string()))?
+                .parse()
+                .map_err(|_| Error::ConfigError("Invalid MAX_RETRIES".to_string()))?,
+            queue_names,
+        })
     }
 
     pub async fn init_db(config: &HashMap<String, Value>) -> Result<Pool<Postgres>, Error> {

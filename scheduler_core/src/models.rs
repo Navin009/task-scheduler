@@ -28,7 +28,7 @@ pub struct Template {
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, Type)]
 #[sqlx(type_name = "job_status")]
-#[sqlx(rename_all = "PascalCase")]
+#[sqlx(rename_all = "lowercase")]
 pub enum JobStatus {
     Pending,
     Running,

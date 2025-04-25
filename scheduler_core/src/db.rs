@@ -55,7 +55,13 @@ impl Database {
         let set_clauses = updates
             .iter()
             .enumerate()
-            .map(|(i, (k, _))| format!("{} = ${}", k, i + 2))
+            .map(|(i, (k, _))| {
+                if *k == "status" {
+                    format!("{} = ${}::job_status", k, i + 2)
+                } else {
+                    format!("{} = ${}", k, i + 2)
+                }
+            })
             .collect::<Vec<_>>()
             .join(", ");
 
@@ -96,7 +102,7 @@ impl Database {
         let query = format!(
             r#"
             SELECT * FROM jobs 
-            WHERE status = 'pending' 
+            WHERE status::job_status = 'pending'::job_status 
             AND scheduled_at <= NOW()
             AND job_type IN ({})
             ORDER BY priority DESC, scheduled_at ASC
@@ -116,7 +122,7 @@ impl Database {
     pub async fn get_jobs_by_status(&self, status: &str) -> Result<Vec<HashMap<String, String>>> {
         let query = r#"
             SELECT * FROM jobs 
-            WHERE status = $1
+            WHERE status::job_status = $1::job_status
             ORDER BY priority DESC, scheduled_at ASC
         "#;
 
@@ -153,7 +159,7 @@ impl Database {
     ) -> Result<Vec<HashMap<String, String>>> {
         let query = r#"
             SELECT * FROM jobs 
-            WHERE status = $1 AND created_at < $2
+            WHERE status::job_status = $1::job_status AND created_at < $2
             ORDER BY created_at ASC
         "#;
 

@@ -26,7 +26,7 @@ ADD CONSTRAINT valid_priority CHECK (priority >= 0 AND priority <= 10);
 
 -- Add check constraint for status
 ALTER TABLE jobs
-ADD CONSTRAINT valid_status CHECK (status IN ('pending', 'queued', 'running', 'completed', 'failed'));
+ADD CONSTRAINT valid_status CHECK (status IN ('pending', 'running', 'completed', 'failed', 'retrying'));
 
 -- Update existing jobs to have one_time type
 UPDATE jobs SET job_type = 'one_time' WHERE job_type IS NULL;

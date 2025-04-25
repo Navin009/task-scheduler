@@ -26,10 +26,10 @@ pub enum JobType {
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum JobStatus {
     Pending,
-    Queued,
     Running,
     Completed,
     Failed,
+    Retrying,
 }
 
 #[derive(Debug, Clone)]
@@ -111,10 +111,10 @@ impl TaskManager {
             },
             status: match data.get("status").unwrap().as_str() {
                 "pending" => JobStatus::Pending,
-                "queued" => JobStatus::Queued,
                 "running" => JobStatus::Running,
                 "completed" => JobStatus::Completed,
                 "failed" => JobStatus::Failed,
+                "retrying" => JobStatus::Retrying,
                 _ => panic!("Invalid job status"),
             },
             priority: data.get("priority").unwrap().parse().unwrap(),
@@ -154,10 +154,10 @@ impl TaskManager {
                 },
                 status: match data.get("status").unwrap().as_str() {
                     "pending" => JobStatus::Pending,
-                    "queued" => JobStatus::Queued,
                     "running" => JobStatus::Running,
                     "completed" => JobStatus::Completed,
                     "failed" => JobStatus::Failed,
+                    "retrying" => JobStatus::Retrying,
                     _ => panic!("Invalid job status"),
                 },
                 priority: data.get("priority").unwrap().parse().unwrap(),
@@ -185,10 +185,10 @@ impl TaskManager {
                 },
                 status: match data.get("status").unwrap().as_str() {
                     "pending" => JobStatus::Pending,
-                    "queued" => JobStatus::Queued,
                     "running" => JobStatus::Running,
                     "completed" => JobStatus::Completed,
                     "failed" => JobStatus::Failed,
+                    "retrying" => JobStatus::Retrying,
                     _ => panic!("Invalid job status"),
                 },
                 priority: data.get("priority").unwrap().parse().unwrap(),
@@ -221,10 +221,10 @@ impl TaskManager {
                 },
                 status: match data.get("status").unwrap().as_str() {
                     "pending" => JobStatus::Pending,
-                    "queued" => JobStatus::Queued,
                     "running" => JobStatus::Running,
                     "completed" => JobStatus::Completed,
                     "failed" => JobStatus::Failed,
+                    "retrying" => JobStatus::Retrying,
                     _ => panic!("Invalid job status"),
                 },
                 priority: data.get("priority").unwrap().parse().unwrap(),
@@ -258,10 +258,10 @@ impl TaskManager {
                 },
                 status: match data.get("status").unwrap().as_str() {
                     "pending" => JobStatus::Pending,
-                    "queued" => JobStatus::Queued,
                     "running" => JobStatus::Running,
                     "completed" => JobStatus::Completed,
                     "failed" => JobStatus::Failed,
+                    "retrying" => JobStatus::Retrying,
                     _ => panic!("Invalid job status"),
                 },
                 priority: data.get("priority").unwrap().parse().unwrap(),
@@ -292,10 +292,10 @@ impl ToString for JobStatus {
     fn to_string(&self) -> String {
         match self {
             JobStatus::Pending => "pending".to_string(),
-            JobStatus::Queued => "queued".to_string(),
             JobStatus::Running => "running".to_string(),
             JobStatus::Completed => "completed".to_string(),
             JobStatus::Failed => "failed".to_string(),
+            JobStatus::Retrying => "retrying".to_string(),
         }
     }
 }

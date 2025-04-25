@@ -1,12 +1,12 @@
 use crate::config::AppConfig;
 use crate::error::ApiError;
 use chrono::{DateTime, Utc};
-use rocket::State;
 use rocket::delete;
 use rocket::get;
 use rocket::post;
 use rocket::put;
 use rocket::serde::json::Json;
+use rocket::State;
 use scheduler_core::api_models::{DeleteResponse, JobCreate, JobResponse, JobUpdate};
 use scheduler_core::models::{Job as CoreJob, JobStatus, ScheduleType};
 use scheduler_core::task::{Job as TaskJob, JobStatus as TaskJobStatus};
@@ -25,10 +25,10 @@ fn convert_task_job_to_core_job(task_job: TaskJob) -> CoreJob {
         payload: serde_json::to_value(task_job.payload).unwrap(),
         status: match task_job.status {
             TaskJobStatus::Pending => JobStatus::Pending,
-            TaskJobStatus::Queued => JobStatus::Pending,
             TaskJobStatus::Running => JobStatus::Running,
             TaskJobStatus::Completed => JobStatus::Completed,
             TaskJobStatus::Failed => JobStatus::Failed,
+            TaskJobStatus::Retrying => JobStatus::Retrying,
         },
         created_at: Utc::now(),
         updated_at: Utc::now(),

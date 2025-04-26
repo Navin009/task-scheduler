@@ -69,8 +69,8 @@ impl CleanupManager {
             .update_job_status(&job.id, JobStatus::Failed)
             .await?;
 
-        // If job has exceeded max attempts, move to dead letter queue
-        if job.attempts >= job.max_attempts {
+        // If job has exceeded max retries, move to dead letter queue
+        if job.retries >= job.max_retries {
             let dead_letter_queue = format!("dead_letter:{}", job.job_type.to_string());
             self.task_manager
                 .move_to_dead_letter_queue(&job.id, &dead_letter_queue)

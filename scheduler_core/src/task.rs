@@ -11,8 +11,8 @@ pub struct Job {
     pub priority: i32,
     pub scheduled_at: String,
     pub parent_job_id: Option<String>,
-    pub max_attempts: i32,
-    pub attempts: i32,
+    pub max_retries: i32,
+    pub retries: i32,
     pub payload: HashMap<String, String>,
 }
 
@@ -53,8 +53,8 @@ impl TaskManager {
         job_data.insert("status", "pending".to_string());
         job_data.insert("priority", priority.to_string());
         job_data.insert("scheduled_at", scheduled_at);
-        job_data.insert("max_attempts", "1".to_string());
-        job_data.insert("attempts", "0".to_string());
+        job_data.insert("max_retries", "3".to_string());
+        job_data.insert("retries", "0".to_string());
         job_data.insert("payload", serde_json::to_string(&payload)?);
 
         self.db.create_job(&job_data).await
@@ -73,8 +73,8 @@ impl TaskManager {
         job_data.insert("priority", priority.to_string());
         job_data.insert("scheduled_at", scheduled_at);
         job_data.insert("parent_job_id", parent_job_id);
-        job_data.insert("max_attempts", "1".to_string());
-        job_data.insert("attempts", "0".to_string());
+        job_data.insert("max_retries", "3".to_string());
+        job_data.insert("retries", "0".to_string());
         job_data.insert("payload", serde_json::to_string(&payload)?);
 
         self.db.create_job(&job_data).await
@@ -84,7 +84,7 @@ impl TaskManager {
         &self,
         scheduled_at: String,
         priority: i32,
-        max_attempts: i32,
+        max_retries: i32,
         payload: HashMap<String, String>,
     ) -> Result<String> {
         let mut job_data = HashMap::new();
@@ -92,8 +92,8 @@ impl TaskManager {
         job_data.insert("status", "pending".to_string());
         job_data.insert("priority", priority.to_string());
         job_data.insert("scheduled_at", scheduled_at);
-        job_data.insert("max_attempts", max_attempts.to_string());
-        job_data.insert("attempts", "0".to_string());
+        job_data.insert("max_retries", max_retries.to_string());
+        job_data.insert("retries", "0".to_string());
         job_data.insert("payload", serde_json::to_string(&payload)?);
 
         self.db.create_job(&job_data).await
@@ -120,8 +120,8 @@ impl TaskManager {
             priority: data.get("priority").unwrap().parse().unwrap(),
             scheduled_at: data.get("scheduled_at").unwrap().clone(),
             parent_job_id: data.get("parent_job_id").map(|s| s.clone()),
-            max_attempts: data.get("max_attempts").unwrap().parse().unwrap(),
-            attempts: data.get("attempts").unwrap().parse().unwrap(),
+            max_retries: data.get("max_retries").unwrap().parse().unwrap(),
+            retries: data.get("retries").unwrap().parse().unwrap(),
             payload: serde_json::from_str(data.get("payload").unwrap()).unwrap(),
         }))
     }
@@ -134,7 +134,7 @@ impl TaskManager {
 
     pub async fn increment_job_attempts(&self, id: &str) -> Result<bool> {
         let mut updates = HashMap::new();
-        updates.insert("attempts", "attempts + 1".to_string());
+        updates.insert("retries", "retries + 1".to_string());
         self.db.update_job(id, &updates).await
     }
 
@@ -163,8 +163,8 @@ impl TaskManager {
                 priority: data.get("priority").unwrap().parse().unwrap(),
                 scheduled_at: data.get("scheduled_at").unwrap().clone(),
                 parent_job_id: data.get("parent_job_id").map(|s| s.clone()),
-                max_attempts: data.get("max_attempts").unwrap().parse().unwrap(),
-                attempts: data.get("attempts").unwrap().parse().unwrap(),
+                max_retries: data.get("max_retries").unwrap().parse().unwrap(),
+                retries: data.get("retries").unwrap().parse().unwrap(),
                 payload: serde_json::from_str(data.get("payload").unwrap()).unwrap(),
             })
             .collect())
@@ -194,8 +194,8 @@ impl TaskManager {
                 priority: data.get("priority").unwrap().parse().unwrap(),
                 scheduled_at: data.get("scheduled_at").unwrap().clone(),
                 parent_job_id: data.get("parent_job_id").map(|s| s.clone()),
-                max_attempts: data.get("max_attempts").unwrap().parse().unwrap(),
-                attempts: data.get("attempts").unwrap().parse().unwrap(),
+                max_retries: data.get("max_retries").unwrap().parse().unwrap(),
+                retries: data.get("retries").unwrap().parse().unwrap(),
                 payload: serde_json::from_str(data.get("payload").unwrap()).unwrap(),
             })
             .collect())
@@ -230,8 +230,8 @@ impl TaskManager {
                 priority: data.get("priority").unwrap().parse().unwrap(),
                 scheduled_at: data.get("scheduled_at").unwrap().clone(),
                 parent_job_id: data.get("parent_job_id").map(|s| s.clone()),
-                max_attempts: data.get("max_attempts").unwrap().parse().unwrap(),
-                attempts: data.get("attempts").unwrap().parse().unwrap(),
+                max_retries: data.get("max_retries").unwrap().parse().unwrap(),
+                retries: data.get("retries").unwrap().parse().unwrap(),
                 payload: serde_json::from_str(data.get("payload").unwrap()).unwrap(),
             })
             .collect())
@@ -267,8 +267,8 @@ impl TaskManager {
                 priority: data.get("priority").unwrap().parse().unwrap(),
                 scheduled_at: data.get("scheduled_at").unwrap().clone(),
                 parent_job_id: data.get("parent_job_id").map(|s| s.clone()),
-                max_attempts: data.get("max_attempts").unwrap().parse().unwrap(),
-                attempts: data.get("attempts").unwrap().parse().unwrap(),
+                max_retries: data.get("max_retries").unwrap().parse().unwrap(),
+                retries: data.get("retries").unwrap().parse().unwrap(),
                 payload: serde_json::from_str(data.get("payload").unwrap()).unwrap(),
             })
             .collect())

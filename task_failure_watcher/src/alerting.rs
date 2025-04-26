@@ -30,8 +30,8 @@ impl AlertManager {
 
     pub async fn alert_job_failure(&self, job: &Job) {
         let message = format!(
-            "Job {} failed (attempt {}/{}). Job Type: {}",
-            job.id, job.attempts, job.max_attempts, job.job_type
+            "Job {} failed (retry {}/{}). Job Type: {}",
+            job.id, job.retries, job.max_retries, job.job_type
         );
 
         let mut last_alert_time = self.last_alert_time.lock().await;
@@ -55,8 +55,8 @@ impl AlertManager {
 
     pub async fn alert_dead_letter(&self, job: &Job) {
         let message = format!(
-            "Job {} moved to dead letter queue after {} attempts. Job Type: {}",
-            job.id, job.attempts, job.job_type
+            "Job {} moved to dead letter queue after {} retries. Job Type: {}",
+            job.id, job.retries, job.job_type
         );
 
         for channel in &self.channels {

@@ -32,8 +32,8 @@ fn convert_task_job_to_core_job(task_job: TaskJob) -> CoreJob {
         },
         created_at: Utc::now(),
         updated_at: Utc::now(),
-        retries: task_job.attempts,
-        max_retries: task_job.max_attempts,
+        retries: task_job.retries,
+        max_retries: task_job.max_retries,
     }
 }
 

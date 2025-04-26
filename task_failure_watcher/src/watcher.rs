@@ -62,8 +62,8 @@ impl TaskFailureWatcher {
     }
 
     async fn handle_failed_job(&self, job: Job) -> Result<()> {
-        // If job has exceeded max attempts, move to dead letter queue
-        if job.attempts >= job.max_attempts {
+        // If job has exceeded max retries, move to dead letter queue
+        if job.retries >= job.max_retries {
             self.move_to_dead_letter_queue(job).await?;
         } else {
             // Otherwise, retry the job
@@ -80,7 +80,7 @@ impl TaskFailureWatcher {
 
     async fn retry_job(&self, mut job: Job) -> Result<()> {
         // Calculate backoff delay
-        let backoff = self.calculate_backoff(job.attempts as u32);
+        let backoff = self.calculate_backoff(job.retries as u32);
 
         // Update job status to retrying
         self.task_manager

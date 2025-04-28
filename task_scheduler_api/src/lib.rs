@@ -1,5 +1,4 @@
 use anyhow::Result;
-use rocket::Rocket;
 
 pub struct Server {
     // Add necessary fields here

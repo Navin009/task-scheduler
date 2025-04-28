@@ -1,6 +1,6 @@
-use rocket::Request;
 use rocket::http::Status;
 use rocket::response::{Responder, Response};
+use rocket::Request;
 use scheduler_core::error::Error as SchedulerError;
 use serde_json::json;
 use std::fmt;

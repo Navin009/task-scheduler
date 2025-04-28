@@ -1,7 +1,7 @@
 -- Create custom types
-CREATE TYPE schedule_type AS ENUM ('one_time', 'recurring');
-CREATE TYPE job_status AS ENUM ('pending', 'running', 'completed', 'failed', 'cancelled');
-CREATE TYPE job_type AS ENUM ('http', 'shell', 'email');
+CREATE TYPE schedule_type AS ENUM ('one_time', 'recurring', 'polling');
+CREATE TYPE job_status AS ENUM ('pending', 'running', 'completed', 'failed', 'cancelled', 'retrying');
+CREATE TYPE job_type AS ENUM ('one_time', 'recurring', 'polling');
 
 -- Create templates table
 CREATE TABLE templates (
@@ -14,11 +14,13 @@ CREATE TABLE templates (
     priority INTEGER NOT NULL DEFAULT 0,
     max_retries INTEGER NOT NULL DEFAULT 3,
     metadata JSONB,
+    active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT valid_template_schedule CHECK (
         (schedule_type = 'one_time' AND schedule ? 'run_at') OR
-        (schedule_type = 'recurring' AND schedule ? 'cron_expression')
+        (schedule_type = 'recurring' AND schedule ? 'cron_expression') OR
+        (schedule_type = 'polling' AND schedule ? 'interval')
     )
 );
 
@@ -40,11 +42,13 @@ CREATE TABLE jobs (
     next_run_at TIMESTAMP WITH TIME ZONE,
     last_run_at TIMESTAMP WITH TIME ZONE,
     completed_at TIMESTAMP WITH TIME ZONE,
+    scheduled_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     metadata JSONB,
     template_id UUID REFERENCES templates(id),
     CONSTRAINT valid_schedule CHECK (
         (schedule_type = 'one_time' AND schedule ? 'run_at') OR
-        (schedule_type = 'recurring' AND schedule ? 'cron_expression')
+        (schedule_type = 'recurring' AND schedule ? 'cron_expression') OR
+        (schedule_type = 'polling' AND schedule ? 'interval')
     ),
     PRIMARY KEY (id, next_run_at)
 ) PARTITION BY RANGE (next_run_at);

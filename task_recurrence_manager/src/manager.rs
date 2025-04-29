@@ -69,7 +69,7 @@ impl RecurrenceManager {
         for batch in job_batches {
             for job in &batch {
                 let job_data = JobData {
-                    job_type: job.schedule_type.to_string(),
+                    job_type: job.schedule_type.clone(),
                     status: format!("{:?}", job.status),
                     priority: 0, // Default priority since it's not in the Job struct
                     scheduled_at: job.schedule.clone(),

@@ -1,7 +1,6 @@
 use anyhow::Result;
-use chrono::{DateTime, Duration, Utc};
+use chrono::{Duration, Utc};
 use scheduler_core::task::{Job, JobStatus, TaskManager};
-use std::time::Duration as StdDuration;
 use tracing::{error, info};
 
 pub struct CleanupManager {

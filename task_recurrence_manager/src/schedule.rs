@@ -1,7 +1,7 @@
 use chrono::{DateTime, Duration, Utc};
-use cron_parser::ParseError;
 use cron_parser::parse;
-use scheduler_core::models::{Job, ScheduleType, Template};
+use cron_parser::ParseError;
+use scheduler_core::models::{Job, JobType, Template};
 use std::collections::HashSet;
 
 pub struct ScheduleExpander {
@@ -31,7 +31,7 @@ impl ScheduleExpander {
 
                     let job = Job {
                         id: uuid::Uuid::new_v4().to_string(),
-                        schedule_type: ScheduleType::Recurring,
+                        schedule_type: JobType::Recurring,
                         schedule: template.cron_pattern.clone(),
                         payload: template.payload_template.clone(),
                         status: scheduler_core::models::JobStatus::Pending,

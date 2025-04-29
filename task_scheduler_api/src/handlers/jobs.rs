@@ -8,7 +8,7 @@ use rocket::put;
 use rocket::serde::json::Json;
 use rocket::State;
 use scheduler_core::api_models::{DeleteResponse, JobCreate, JobResponse, JobUpdate};
-use scheduler_core::models::{Job as CoreJob, JobStatus, ScheduleType};
+use scheduler_core::models::{Job as CoreJob, JobStatus, JobType};
 use scheduler_core::task::{Job as TaskJob, JobStatus as TaskJobStatus};
 use std::collections::HashMap;
 use uuid::Uuid;
@@ -17,9 +17,9 @@ fn convert_task_job_to_core_job(task_job: TaskJob) -> CoreJob {
     CoreJob {
         id: task_job.id,
         schedule_type: match task_job.job_type {
-            scheduler_core::task::JobType::OneTime => ScheduleType::OneTime,
-            scheduler_core::task::JobType::Recurring => ScheduleType::Recurring,
-            scheduler_core::task::JobType::Polling => ScheduleType::Polling,
+            JobType::OneTime => JobType::OneTime,
+            JobType::Recurring => JobType::Recurring,
+            JobType::Polling => JobType::Polling,
         },
         schedule: task_job.scheduled_at,
         payload: serde_json::to_value(task_job.payload).unwrap(),
@@ -50,7 +50,7 @@ pub async fn create_job(
         .map_err(|e| ApiError::ValidationError(format!("Invalid payload format: {}", e)))?;
 
     match job.schedule_type {
-        ScheduleType::OneTime => {
+        JobType::OneTime => {
             // Validate and parse the scheduled time
             let scheduled_at = DateTime::parse_from_rfc3339(&job.schedule).map_err(|_| {
                 ApiError::ValidationError("Invalid datetime format. Use ISO 8601 format".into())
@@ -62,7 +62,7 @@ pub async fn create_job(
                 .await
                 .map_err(|e| ApiError::InternalServerError(e.to_string()))?;
         }
-        ScheduleType::Recurring => {
+        JobType::Recurring => {
             // Validate cron expression
             let now = Utc::now();
             cron_parser::parse(&job.schedule, &now)
@@ -74,7 +74,7 @@ pub async fn create_job(
                 .await
                 .map_err(|e| ApiError::InternalServerError(e.to_string()))?;
         }
-        ScheduleType::Polling => {
+        JobType::Polling => {
             // Parse and validate polling config
             let polling_config: serde_json::Value = serde_json::from_str(&job.schedule)
                 .map_err(|_| ApiError::ValidationError("Invalid polling config format".into()))?;
@@ -154,9 +154,9 @@ pub async fn update_job(
             if let Some(schedule_type) = job_update.schedule_type {
                 // Convert schedule type to job type
                 let job_type = match schedule_type {
-                    ScheduleType::OneTime => scheduler_core::task::JobType::OneTime,
-                    ScheduleType::Recurring => scheduler_core::task::JobType::Recurring,
-                    ScheduleType::Polling => scheduler_core::task::JobType::Polling,
+                    JobType::OneTime => JobType::OneTime,
+                    JobType::Recurring => JobType::Recurring,
+                    JobType::Polling => JobType::Polling,
                 };
                 // Update job type through status update (temporary workaround)
                 state

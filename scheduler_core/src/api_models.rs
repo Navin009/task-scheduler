@@ -1,10 +1,10 @@
-use crate::models::ScheduleType;
+use crate::models::JobType;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct JobCreate {
-    pub schedule_type: ScheduleType,
+    pub schedule_type: JobType,
     pub schedule: String,
     pub payload: Value,
     pub max_retries: u32,
@@ -13,7 +13,7 @@ pub struct JobCreate {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct JobUpdate {
-    pub schedule_type: Option<ScheduleType>,
+    pub schedule_type: Option<JobType>,
     pub schedule: Option<String>,
     pub payload: Option<Value>,
     pub max_retries: Option<u32>,

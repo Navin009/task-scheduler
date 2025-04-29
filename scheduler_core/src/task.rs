@@ -1,7 +1,7 @@
-use crate::{ScheduleType, db::Database};
+use crate::{JobType, db::Database};
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
-use serde_json::{Value, to_value};
+use serde_json::to_value;
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -15,13 +15,6 @@ pub struct Job {
     pub max_retries: i32,
     pub retries: i32,
     pub payload: HashMap<String, String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum JobType {
-    OneTime,
-    Recurring,
-    Polling,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -50,7 +43,7 @@ impl TaskManager {
         payload: HashMap<String, String>,
     ) -> Result<String> {
         let job_data = crate::db::JobData {
-            job_type: ScheduleType::OneTime.to_string(),
+            job_type: JobType::OneTime,
             status: "pending".to_string(),
             priority,
             scheduled_at: format!("{}::timestamp with time zone", scheduled_at),
@@ -71,7 +64,7 @@ impl TaskManager {
         payload: HashMap<String, String>,
     ) -> Result<String> {
         let job_data = crate::db::JobData {
-            job_type: "recurring".to_string(),
+            job_type: JobType::Recurring,
             status: "pending".to_string(),
             priority,
             scheduled_at: format!("{}::timestamp with time zone", scheduled_at),
@@ -92,7 +85,7 @@ impl TaskManager {
         payload: HashMap<String, String>,
     ) -> Result<String> {
         let job_data = crate::db::JobData {
-            job_type: "polling".to_string(),
+            job_type: JobType::Polling,
             status: "pending".to_string(),
             priority,
             scheduled_at: format!("{}::timestamp with time zone", scheduled_at),
@@ -312,16 +305,6 @@ impl std::fmt::Display for JobType {
             JobType::OneTime => write!(f, "one_time"),
             JobType::Recurring => write!(f, "recurring"),
             JobType::Polling => write!(f, "polling"),
-        }
-    }
-}
-
-impl std::fmt::Display for ScheduleType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ScheduleType::OneTime => write!(f, "one_time"),
-            ScheduleType::Recurring => write!(f, "recurring"),
-            ScheduleType::Polling => write!(f, "polling"),
         }
     }
 }

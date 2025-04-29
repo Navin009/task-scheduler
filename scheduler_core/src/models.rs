@@ -6,7 +6,7 @@ use sqlx::{FromRow, Type};
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct Job {
     pub id: String,
-    pub schedule_type: ScheduleType,
+    pub schedule_type: JobType,
     pub schedule: String,
     pub payload: serde_json::Value,
     pub status: JobStatus,
@@ -41,7 +41,7 @@ pub enum JobStatus {
 #[sqlx(type_name = "schedule_type")]
 #[sqlx(rename_all = "snake_case")]
 #[serde(rename_all = "snake_case")]
-pub enum ScheduleType {
+pub enum JobType {
     #[serde(rename = "one_time")]
     OneTime,
     #[serde(rename = "recurring")]
@@ -50,14 +50,14 @@ pub enum ScheduleType {
     Polling,
 }
 
-impl TryFrom<&str> for ScheduleType {
+impl TryFrom<&str> for JobType {
     type Error = Error;
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         match value.to_lowercase().as_str() {
-            "one_time" => Ok(ScheduleType::OneTime),
-            "recurring" => Ok(ScheduleType::Recurring),
-            "polling" => Ok(ScheduleType::Polling),
+            "one_time" => Ok(JobType::OneTime),
+            "recurring" => Ok(JobType::Recurring),
+            "polling" => Ok(JobType::Polling),
             _ => Err(Error::ValidationError(format!(
                 "Invalid schedule type: {}",
                 value
@@ -66,12 +66,12 @@ impl TryFrom<&str> for ScheduleType {
     }
 }
 
-impl From<ScheduleType> for String {
-    fn from(value: ScheduleType) -> Self {
+impl From<JobType> for String {
+    fn from(value: JobType) -> Self {
         match value {
-            ScheduleType::OneTime => "one_time".to_string(),
-            ScheduleType::Recurring => "recurring".to_string(),
-            ScheduleType::Polling => "polling".to_string(),
+            JobType::OneTime => "one_time".to_string(),
+            JobType::Recurring => "recurring".to_string(),
+            JobType::Polling => "polling".to_string(),
         }
     }
 }
@@ -79,17 +79,17 @@ impl From<ScheduleType> for String {
 impl Job {
     pub fn validate(&self) -> Result<(), Error> {
         match self.schedule_type {
-            ScheduleType::Recurring => {
+            JobType::Recurring => {
                 let now = Utc::now();
                 cron_parser::parse(&self.schedule, &now)
                     .map_err(|e| Error::ValidationError(e.to_string()))?;
             }
-            ScheduleType::OneTime => {
+            JobType::OneTime => {
                 DateTime::parse_from_rfc3339(&self.schedule).map_err(|_| {
                     Error::ValidationError("Invalid datetime format. Use ISO 8601 format".into())
                 })?;
             }
-            ScheduleType::Polling => {
+            JobType::Polling => {
                 let polling_config: serde_json::Value = serde_json::from_str(&self.schedule)
                     .map_err(|_| Error::ValidationError("Invalid polling config format".into()))?;
 

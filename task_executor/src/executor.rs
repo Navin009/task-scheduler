@@ -6,7 +6,7 @@ use tracing::{error, info};
 use scheduler_core::{
     cache::Cache,
     db::Database,
-    models::{Job, JobStatus, ScheduleType},
+    models::{Job, JobStatus, JobType},
 };
 
 use crate::{error::Error, process::ProcessManager, state::ExecutionState};
@@ -86,9 +86,9 @@ impl TaskExecutor {
                 let job = Job {
                     id: job_data.get("id").unwrap().clone(),
                     schedule_type: match job_data.get("schedule_type").unwrap().as_str() {
-                        "one_time" => ScheduleType::OneTime,
-                        "recurring" => ScheduleType::Recurring,
-                        "polling" => ScheduleType::Polling,
+                        "one_time" => JobType::OneTime,
+                        "recurring" => JobType::Recurring,
+                        "polling" => JobType::Polling,
                         _ => return Err(Error::Process("Invalid schedule type".into())),
                     },
                     schedule: job_data.get("schedule").unwrap().clone(),

@@ -16,5 +16,5 @@ pub use config::Config;
 pub use db::Database;
 pub use error::Error as SchedulerError;
 pub use init::{init_cache, init_database};
-pub use models::{Job, JobStatus, ScheduleType, Template};
-pub use task::{JobType, TaskManager};
+pub use models::{Job, JobStatus, JobType, Template};
+pub use task::TaskManager;

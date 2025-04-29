@@ -1,6 +1,7 @@
-use crate::db::Database;
+use crate::{ScheduleType, db::Database};
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
+use serde_json::{Value, to_value};
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -48,16 +49,18 @@ impl TaskManager {
         priority: i32,
         payload: HashMap<String, String>,
     ) -> Result<String> {
-        let mut job_data = HashMap::new();
-        job_data.insert("job_type", "one_time".to_string());
-        job_data.insert("status", "pending".to_string());
-        job_data.insert("priority", priority.to_string());
-        job_data.insert("scheduled_at", scheduled_at);
-        job_data.insert("max_retries", "3".to_string());
-        job_data.insert("retries", "0".to_string());
-        job_data.insert("payload", serde_json::to_string(&payload)?);
+        let job_data = crate::db::JobData {
+            job_type: ScheduleType::OneTime.to_string(),
+            status: "pending".to_string(),
+            priority,
+            scheduled_at: format!("{}::timestamp with time zone", scheduled_at),
+            parent_job_id: None,
+            max_retries: 3,
+            retries: 0,
+            payload: to_value(payload)?,
+        };
 
-        self.db.create_job(&job_data).await
+        self.db.create_job(job_data).await
     }
 
     pub async fn create_recurring_job(
@@ -67,17 +70,18 @@ impl TaskManager {
         priority: i32,
         payload: HashMap<String, String>,
     ) -> Result<String> {
-        let mut job_data = HashMap::new();
-        job_data.insert("job_type", "recurring".to_string());
-        job_data.insert("status", "pending".to_string());
-        job_data.insert("priority", priority.to_string());
-        job_data.insert("scheduled_at", scheduled_at);
-        job_data.insert("parent_job_id", parent_job_id);
-        job_data.insert("max_retries", "3".to_string());
-        job_data.insert("retries", "0".to_string());
-        job_data.insert("payload", serde_json::to_string(&payload)?);
+        let job_data = crate::db::JobData {
+            job_type: "recurring".to_string(),
+            status: "pending".to_string(),
+            priority,
+            scheduled_at: format!("{}::timestamp with time zone", scheduled_at),
+            parent_job_id: Some(parent_job_id),
+            max_retries: 3,
+            retries: 0,
+            payload: to_value(payload)?,
+        };
 
-        self.db.create_job(&job_data).await
+        self.db.create_job(job_data).await
     }
 
     pub async fn create_polling_job(
@@ -87,16 +91,18 @@ impl TaskManager {
         max_retries: i32,
         payload: HashMap<String, String>,
     ) -> Result<String> {
-        let mut job_data = HashMap::new();
-        job_data.insert("job_type", "polling".to_string());
-        job_data.insert("status", "pending".to_string());
-        job_data.insert("priority", priority.to_string());
-        job_data.insert("scheduled_at", scheduled_at);
-        job_data.insert("max_retries", max_retries.to_string());
-        job_data.insert("retries", "0".to_string());
-        job_data.insert("payload", serde_json::to_string(&payload)?);
+        let job_data = crate::db::JobData {
+            job_type: "polling".to_string(),
+            status: "pending".to_string(),
+            priority,
+            scheduled_at: format!("{}::timestamp with time zone", scheduled_at),
+            parent_job_id: None,
+            max_retries,
+            retries: 0,
+            payload: to_value(payload)?,
+        };
 
-        self.db.create_job(&job_data).await
+        self.db.create_job(job_data).await
     }
 
     pub async fn get_job(&self, id: &str) -> Result<Option<Job>> {
@@ -306,6 +312,16 @@ impl std::fmt::Display for JobType {
             JobType::OneTime => write!(f, "one_time"),
             JobType::Recurring => write!(f, "recurring"),
             JobType::Polling => write!(f, "polling"),
+        }
+    }
+}
+
+impl std::fmt::Display for ScheduleType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ScheduleType::OneTime => write!(f, "one_time"),
+            ScheduleType::Recurring => write!(f, "recurring"),
+            ScheduleType::Polling => write!(f, "polling"),
         }
     }
 }

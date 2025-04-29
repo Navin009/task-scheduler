@@ -100,10 +100,6 @@ until docker-compose exec valkey redis-cli ping | grep -q "PONG"; do
     sleep 1
 done
 
-# Start the API service with watch
-echo -e "${API_COLOR}[API]${NC} Starting Task Scheduler API (with watch)..."
-cargo watch -x 'run --bin task_scheduler_api' &
-
 # Start Queue Populator with watch
 echo -e "${QUEUE_COLOR}[QUEUE]${NC} Starting Queue Populator (with watch)..."
 cargo watch -x 'run --bin queue_populator' &
@@ -119,6 +115,10 @@ cargo watch -x 'run --bin task_failure_watcher' &
 # Start Task Recurrence Manager with watch
 echo -e "${RECURRENCE_COLOR}[RECURRENCE]${NC} Starting Task Recurrence Manager (with watch)..."
 cargo watch -x 'run --bin task_recurrence_manager' &
+
+# Start the API service with watch
+echo -e "${API_COLOR}[API]${NC} Starting Task Scheduler API (with watch)..."
+cargo watch -x 'run --bin task_scheduler_api' &
 
 echo -e "${GREEN}All services started in watch mode!${NC}"
 echo -e "${YELLOW}Press Ctrl+C to stop all services${NC}"

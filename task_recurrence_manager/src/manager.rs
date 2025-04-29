@@ -1,7 +1,8 @@
+use anyhow;
 use chrono::{DateTime, Duration, Utc};
 use scheduler_core::{
     cache::Cache,
-    db::Database,
+    db::{Database, JobData},
     models::{Job, Template},
 };
 use tracing::{info, warn};
@@ -67,14 +68,19 @@ impl RecurrenceManager {
         let job_batches_clone = job_batches.clone();
         for batch in job_batches {
             for job in &batch {
-                let mut job_data = std::collections::HashMap::new();
-                job_data.insert("job_type", String::from(job.schedule_type.clone()));
-                job_data.insert("status", format!("{:?}", job.status));
-                job_data.insert("schedule", job.schedule.clone());
-                job_data.insert("payload", job.payload.to_string());
-                job_data.insert("max_retries", job.max_retries.to_string());
-                job_data.insert("retries", job.retries.to_string());
-                self.db.create_job(&job_data).await?;
+                let job_data = JobData {
+                    job_type: job.schedule_type.to_string(),
+                    status: format!("{:?}", job.status),
+                    priority: 0, // Default priority since it's not in the Job struct
+                    scheduled_at: job.schedule.clone(),
+                    parent_job_id: None,
+                    max_retries: job.max_retries,
+                    retries: job.retries,
+                    payload: serde_json::to_value(&job.payload)
+                        .map_err(anyhow::Error::from)
+                        .map_err(Error::from)?,
+                };
+                self.db.create_job(job_data).await?;
             }
 
             // Queue jobs for execution

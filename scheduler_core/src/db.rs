@@ -1,5 +1,6 @@
 use crate::models::Template;
 use anyhow::Result;
+use serde_json::Value;
 use sqlx::postgres::{PgPool, PgRow};
 use sqlx::{Column, Row};
 use std::collections::HashMap;
@@ -9,6 +10,18 @@ pub struct Database {
     pool: PgPool,
 }
 
+#[derive(Debug)]
+pub struct JobData {
+    pub job_type: String,
+    pub status: String,
+    pub priority: i32,
+    pub scheduled_at: String,
+    pub parent_job_id: Option<String>,
+    pub max_retries: i32,
+    pub retries: i32,
+    pub payload: Value,
+}
+
 impl Database {
     pub async fn new(url: &str) -> Result<Self> {
         let pool = PgPool::connect(url).await?;
@@ -16,25 +29,22 @@ impl Database {
     }
 
     // Low-level job operations
-    pub async fn create_job(&self, job: &HashMap<&str, String>) -> Result<String> {
-        let columns = job.keys().map(|s| *s).collect::<Vec<_>>().join(", ");
-        let values = job.values().collect::<Vec<_>>();
-        let placeholders = (1..=values.len())
-            .map(|i| format!("${}", i))
-            .collect::<Vec<_>>()
-            .join(", ");
+    pub async fn create_job(&self, job_data: JobData) -> Result<String> {
+        let query = r#"
+            INSERT INTO jobs (job_type, status, priority, scheduled_at, parent_job_id, max_retries, retries, payload, created_at, updated_at)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
+                RETURNING id
+        "#;
 
-        let query = format!(
-            "INSERT INTO jobs ({}) VALUES ({}) RETURNING id",
-            columns, placeholders
-        );
-
-        let mut query_builder = sqlx::query(&query);
-        for value in values {
-            query_builder = query_builder.bind(value);
-        }
-
-        let id = query_builder
+        let id = sqlx::query(query)
+            .bind(job_data.job_type)
+            .bind(job_data.status)
+            .bind(job_data.priority)
+            .bind(job_data.scheduled_at)
+            .bind(job_data.parent_job_id)
+            .bind(job_data.max_retries)
+            .bind(job_data.retries)
+            .bind(job_data.payload)
             .fetch_one(&self.pool)
             .await?
             .get::<String, _>("id");
@@ -140,7 +150,7 @@ impl Database {
     ) -> Result<Vec<HashMap<String, String>>> {
         let query = r#"
             SELECT * FROM jobs 
-            WHERE created_at < $1
+            WHERE created_at < $1::timestamp with time zone
             ORDER BY created_at ASC
         "#;
 

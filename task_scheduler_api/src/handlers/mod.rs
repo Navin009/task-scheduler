@@ -2,7 +2,13 @@ mod jobs;
 mod ping;
 
 pub fn ping_routes() -> Vec<rocket::Route> {
-    routes![ping::ping, ping::db_check, ping::metrics, ping::prometheus]
+    routes![
+        ping::ping,
+        ping::db_check,
+        ping::metrics,
+        ping::prometheus,
+        ping::health
+    ]
 }
 
 pub fn jobs_routes() -> Vec<rocket::Route> {

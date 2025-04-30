@@ -10,6 +10,11 @@ members = [
     "task_scheduler_monolith", # Unified Binary (Binary Crate)
 ]
 
+# Disable unused code warnings
+[workspace.lints.rust]
+unused = "allow"
+dead_code = "allow"
+
 # Example Release Profile Optimization (applied when building with --release)
 [profile.release]
 lto = true        # Link Time Optimization for potentially smaller/faster binaries

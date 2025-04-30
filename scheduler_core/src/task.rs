@@ -1,9 +1,10 @@
-use crate::{JobStatus, JobType, db::Database};
+use crate::{JobStatus, JobType, SchedulerError, db::Database};
 use anyhow::Result;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::to_value;
 use std::collections::HashMap;
+use std::str::FromStr;
 use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -39,13 +40,18 @@ impl TaskManager {
             job_type: JobType::OneTime,
             status: JobStatus::Pending,
             priority,
-            scheduled_at: scheduled_at,
+            schedule_at: scheduled_at,
             parent_job_id: None,
             max_retries: 3,
             retries: 0,
             payload: to_value(payload)?,
             cron: None,
             interval: None,
+            active: true,
+            description: None,
+            name: None,
+            max_attempts: 1,
+            metadata: None,
         };
 
         self.db.create_job(job_data).await
@@ -54,24 +60,35 @@ impl TaskManager {
     pub async fn create_recurring_job(
         &self,
         parent_job_id: Uuid,
-        cron: Option<String>,
+        cron_pattern: Option<String>,
         priority: i32,
         payload: HashMap<String, String>,
     ) -> Result<String> {
+        //based on the cron, calculate the next run time
+        let schedule_at = cron_pattern.clone().map(|c| {
+            let schedule = cron::Schedule::from_str(&c).expect("Invalid cron expression");
+            schedule.upcoming(Utc).next().expect("No upcoming schedule")
+        });
+
         let job_data = crate::db::JobData {
             job_type: JobType::Recurring,
             status: JobStatus::Pending,
             priority,
-            cron: cron,
+            cron: cron_pattern,
             parent_job_id: Some(parent_job_id),
             max_retries: 3,
             retries: 0,
             payload: to_value(payload)?,
             interval: None,
-            scheduled_at: None,
+            schedule_at: schedule_at,
+            name: None,
+            description: None,
+            max_attempts: 1,
+            metadata: None,
+            active: true,
         };
 
-        self.db.create_job(job_data).await
+        self.db.create_template(job_data).await
     }
 
     pub async fn create_polling_job(
@@ -85,16 +102,21 @@ impl TaskManager {
             job_type: JobType::Polling,
             status: JobStatus::Pending,
             priority,
-            scheduled_at: None,
+            schedule_at: None,
             parent_job_id: None,
             max_retries,
             retries: 0,
             payload: to_value(payload)?,
             cron: None,
             interval: interval,
+            max_attempts: 3,
+            metadata: None,
+            active: true,
+            description: None,
+            name: None,
         };
 
-        self.db.create_job(job_data).await
+        self.db.create_template(job_data).await
     }
 
     pub async fn get_job(&self, id: &str) -> Result<Option<Job>> {

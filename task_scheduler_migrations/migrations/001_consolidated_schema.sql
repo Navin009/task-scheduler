@@ -9,8 +9,6 @@ CREATE TABLE templates (
     name VARCHAR(255) NOT NULL,
     description TEXT,
     job_type job_type NOT NULL,
-    schedule_type schedule_type NOT NULL,
-    schedule VARCHAR(30) NOT NULL,
     priority INTEGER NOT NULL DEFAULT 0,
     max_retries INTEGER NOT NULL DEFAULT 3,
     interval INTEGER,

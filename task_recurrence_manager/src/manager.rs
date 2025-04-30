@@ -72,7 +72,7 @@ impl RecurrenceManager {
                     job_type: job.schedule_type.clone(),
                     status: job.status,
                     priority: 0, // Default priority since it's not in the Job struct
-                    scheduled_at: Some(job.schedule),
+                    schedule_at: Some(job.schedule),
                     cron: None,
                     interval: None,
                     parent_job_id: None,
@@ -81,6 +81,11 @@ impl RecurrenceManager {
                     payload: serde_json::to_value(&job.payload)
                         .map_err(anyhow::Error::from)
                         .map_err(Error::from)?,
+                    active: true,
+                    description: None,
+                    max_attempts: 3,
+                    metadata: None,
+                    name: None,
                 };
                 self.db.create_job(job_data).await?;
             }

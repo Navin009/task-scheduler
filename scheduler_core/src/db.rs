@@ -15,16 +15,21 @@ pub struct Database {
 
 #[derive(Debug)]
 pub struct JobData {
-    pub job_type: JobType,
+    pub name: Option<String>,
     pub status: JobStatus,
-    pub priority: i32,
-    pub scheduled_at: Option<DateTime<Utc>>,
-    pub cron: Option<String>,
-    pub interval: Option<u32>,
     pub parent_job_id: Option<Uuid>,
+    pub description: Option<String>,
+    pub job_type: JobType,
+    pub priority: i32,
     pub max_retries: i32,
     pub retries: i32,
     pub payload: Value,
+    pub interval: Option<u32>,
+    pub cron: Option<String>,
+    pub schedule_at: Option<DateTime<Utc>>,
+    pub max_attempts: i32,
+    pub metadata: Option<Value>,
+    pub active: bool,
 }
 
 impl Database {
@@ -33,7 +38,6 @@ impl Database {
         Ok(Self { pool })
     }
 
-    // Low-level job operations
     pub async fn create_job(&self, job_data: JobData) -> Result<String> {
         let id = Uuid::new_v4();
         let query = r#"
@@ -45,12 +49,38 @@ impl Database {
         let result = sqlx::query(query)
             .bind(job_data.status)
             .bind(job_data.priority)
-            .bind(job_data.scheduled_at)
+            .bind(job_data.schedule_at.unwrap())
             .bind(job_data.parent_job_id)
             .bind(job_data.max_retries)
             .bind(job_data.retries)
             .bind(job_data.payload)
             .bind(&id)
+            .fetch_one(&self.pool)
+            .await?
+            .get::<Uuid, _>("id");
+
+        Ok(result.to_string())
+    }
+
+    pub async fn create_template(&self, job_data: JobData) -> Result<String> {
+        let id = Uuid::new_v4();
+        let query = r#"
+            INSERT INTO templates (id, name, description, job_type, priority, max_retries, interval, cron, schedule_at, max_attempts, metadata, active, created_at, updated_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW(), NOW())
+            RETURNING id
+        "#;
+        let result = sqlx::query(query)
+            .bind(&id)
+            .bind(job_data.name)
+            .bind(job_data.description)
+            .bind(job_data.job_type)
+            .bind(job_data.priority)
+            .bind(job_data.max_retries)
+            .bind(job_data.interval.unwrap_or(0) as i32)
+            .bind(job_data.cron)
+            .bind(job_data.schedule_at.unwrap())
+            .bind(job_data.max_attempts)
+            .bind(true)
             .fetch_one(&self.pool)
             .await?
             .get::<Uuid, _>("id");

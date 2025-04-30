@@ -1,4 +1,4 @@
-use scheduler_core::{cache::Cache, db::Database, task::TaskManager};
+use scheduler_core::{cache::Cache, db::Database, task::TaskManager, JobStatus};
 use sqlx::PgPool;
 use tracing::error;
 
@@ -59,7 +59,7 @@ impl JobProcessor {
 
     async fn update_job_status(&self, job: &scheduler_core::task::Job) -> Result<()> {
         self.task_manager
-            .update_job_status(&job.id, scheduler_core::task::JobStatus::Pending)
+            .update_job_status(&job.id, JobStatus::Pending)
             .await?;
 
         if let Some(queue_name) = self.get_queue_name(&job) {

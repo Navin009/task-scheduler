@@ -1,4 +1,4 @@
-use crate::{JobType, db::Database};
+use crate::{JobStatus, JobType, db::Database};
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use serde_json::to_value;
@@ -15,15 +15,6 @@ pub struct Job {
     pub max_retries: i32,
     pub retries: i32,
     pub payload: HashMap<String, String>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
-pub enum JobStatus {
-    Pending,
-    Running,
-    Completed,
-    Failed,
-    Retrying,
 }
 
 #[derive(Debug, Clone)]
@@ -44,7 +35,7 @@ impl TaskManager {
     ) -> Result<String> {
         let job_data = crate::db::JobData {
             job_type: JobType::OneTime,
-            status: "pending".to_string(),
+            status: JobStatus::Pending,
             priority,
             scheduled_at: format!("{}::timestamp with time zone", scheduled_at),
             parent_job_id: None,
@@ -65,7 +56,7 @@ impl TaskManager {
     ) -> Result<String> {
         let job_data = crate::db::JobData {
             job_type: JobType::Recurring,
-            status: "pending".to_string(),
+            status: JobStatus::Pending,
             priority,
             scheduled_at: format!("{}::timestamp with time zone", scheduled_at),
             parent_job_id: Some(parent_job_id),
@@ -86,7 +77,7 @@ impl TaskManager {
     ) -> Result<String> {
         let job_data = crate::db::JobData {
             job_type: JobType::Polling,
-            status: "pending".to_string(),
+            status: JobStatus::Pending,
             priority,
             scheduled_at: format!("{}::timestamp with time zone", scheduled_at),
             parent_job_id: None,

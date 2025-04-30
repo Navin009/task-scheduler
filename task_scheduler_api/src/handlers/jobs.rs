@@ -9,7 +9,7 @@ use rocket::serde::json::Json;
 use rocket::State;
 use scheduler_core::api_models::{DeleteResponse, JobCreate, JobResponse, JobUpdate};
 use scheduler_core::models::{Job as CoreJob, JobStatus, JobType};
-use scheduler_core::task::{Job as TaskJob, JobStatus as TaskJobStatus};
+use scheduler_core::task::Job as TaskJob;
 use std::collections::HashMap;
 use uuid::Uuid;
 
@@ -24,11 +24,11 @@ fn convert_task_job_to_core_job(task_job: TaskJob) -> CoreJob {
         schedule: task_job.scheduled_at,
         payload: serde_json::to_value(task_job.payload).unwrap(),
         status: match task_job.status {
-            TaskJobStatus::Pending => JobStatus::Pending,
-            TaskJobStatus::Running => JobStatus::Running,
-            TaskJobStatus::Completed => JobStatus::Completed,
-            TaskJobStatus::Failed => JobStatus::Failed,
-            TaskJobStatus::Retrying => JobStatus::Retrying,
+            JobStatus::Pending => JobStatus::Pending,
+            JobStatus::Running => JobStatus::Running,
+            JobStatus::Completed => JobStatus::Completed,
+            JobStatus::Failed => JobStatus::Failed,
+            JobStatus::Retrying => JobStatus::Retrying,
         },
         created_at: Utc::now(),
         updated_at: Utc::now(),
@@ -161,7 +161,7 @@ pub async fn update_job(
                 // Update job type through status update (temporary workaround)
                 state
                     .task_manager
-                    .update_job_status(&id, scheduler_core::task::JobStatus::Pending)
+                    .update_job_status(&id, JobStatus::Pending)
                     .await
                     .map_err(|e| ApiError::InternalServerError(e.to_string()))?;
             }
@@ -215,7 +215,7 @@ pub async fn delete_job(
         Some(_) => {
             state
                 .task_manager
-                .update_job_status(&id, scheduler_core::task::JobStatus::Failed)
+                .update_job_status(&id, JobStatus::Failed)
                 .await
                 .map_err(|e| ApiError::InternalServerError(e.to_string()))?;
             Ok(Json(DeleteResponse {

@@ -1,4 +1,4 @@
-use crate::JobType;
+use crate::{JobStatus, JobType};
 use crate::models::Template;
 use anyhow::Result;
 use serde_json::Value;
@@ -14,7 +14,7 @@ pub struct Database {
 #[derive(Debug)]
 pub struct JobData {
     pub job_type: JobType,
-    pub status: String,
+    pub status: JobStatus,
     pub priority: i32,
     pub scheduled_at: String,
     pub parent_job_id: Option<String>,

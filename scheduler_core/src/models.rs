@@ -38,7 +38,7 @@ pub enum JobStatus {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
-#[sqlx(type_name = "schedule_type")]
+#[sqlx(type_name = "job_type")]
 #[sqlx(rename_all = "snake_case")]
 #[serde(rename_all = "snake_case")]
 pub enum JobType {

@@ -1,8 +1,8 @@
 use anyhow::Result;
 use scheduler_core::{
     cache::Cache,
-    task::{Job, JobStatus, TaskManager},
-    JobType,
+    task::{Job, TaskManager},
+    JobStatus, JobType,
 };
 use std::time::Duration as StdDuration;
 use tokio::time::sleep;

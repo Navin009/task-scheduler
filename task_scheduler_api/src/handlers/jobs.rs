@@ -43,21 +43,23 @@ pub async fn create_job(
         JobType::OneTime => {
             state
                 .task_manager
-                .create_one_time_job(job.schedule, 0, payload)
+                .create_one_time_job(job.schedule_at, 0, payload)
                 .await
                 .map_err(|e| ApiError::InternalServerError(e.to_string()))?;
         }
         JobType::Recurring => {
             state
                 .task_manager
-                .create_recurring_job(job_id.clone(), job.schedule, 0, payload)
+                .create_recurring_job(job_id.clone(), job.cron, 0, payload)
                 .await
                 .map_err(|e| ApiError::InternalServerError(e.to_string()))?;
         }
         JobType::Polling => {
             // Parse and validate polling config
-            let polling_config: serde_json::Value = serde_json::from_str(&job.schedule.to_string())
-                .map_err(|_| ApiError::ValidationError("Invalid polling config format".into()))?;
+            let polling_config: serde_json::Value =
+                serde_json::from_str(&job.interval.unwrap().to_string()).map_err(|_| {
+                    ApiError::ValidationError("Invalid polling config format".into())
+                })?;
 
             let max_attempts = polling_config
                 .get("max_attempts")
@@ -70,7 +72,7 @@ pub async fn create_job(
 
             state
                 .task_manager
-                .create_polling_job(job.schedule, 0, max_attempts as i32, payload)
+                .create_polling_job(job.interval, 0, max_attempts as i32, payload)
                 .await
                 .map_err(|e| ApiError::InternalServerError(e.to_string()))?;
         }

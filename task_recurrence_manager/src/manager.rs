@@ -72,7 +72,9 @@ impl RecurrenceManager {
                     job_type: job.schedule_type.clone(),
                     status: job.status,
                     priority: 0, // Default priority since it's not in the Job struct
-                    scheduled_at: job.schedule.clone(),
+                    scheduled_at: Some(job.schedule),
+                    cron: None,
+                    interval: None,
                     parent_job_id: None,
                     max_retries: job.max_retries,
                     retries: job.retries,

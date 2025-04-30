@@ -31,7 +31,7 @@ impl TaskManager {
 
     pub async fn create_one_time_job(
         &self,
-        scheduled_at: DateTime<Utc>,
+        scheduled_at: Option<DateTime<Utc>>,
         priority: i32,
         payload: HashMap<String, String>,
     ) -> Result<String> {
@@ -39,11 +39,13 @@ impl TaskManager {
             job_type: JobType::OneTime,
             status: JobStatus::Pending,
             priority,
-            scheduled_at,
+            scheduled_at: scheduled_at,
             parent_job_id: None,
             max_retries: 3,
             retries: 0,
             payload: to_value(payload)?,
+            cron: None,
+            interval: None,
         };
 
         self.db.create_job(job_data).await
@@ -52,7 +54,7 @@ impl TaskManager {
     pub async fn create_recurring_job(
         &self,
         parent_job_id: Uuid,
-        scheduled_at: DateTime<Utc>,
+        cron: Option<String>,
         priority: i32,
         payload: HashMap<String, String>,
     ) -> Result<String> {
@@ -60,11 +62,13 @@ impl TaskManager {
             job_type: JobType::Recurring,
             status: JobStatus::Pending,
             priority,
-            scheduled_at,
+            cron: cron,
             parent_job_id: Some(parent_job_id),
             max_retries: 3,
             retries: 0,
             payload: to_value(payload)?,
+            interval: None,
+            scheduled_at: None,
         };
 
         self.db.create_job(job_data).await
@@ -72,7 +76,7 @@ impl TaskManager {
 
     pub async fn create_polling_job(
         &self,
-        scheduled_at: DateTime<Utc>,
+        interval: Option<u32>,
         priority: i32,
         max_retries: i32,
         payload: HashMap<String, String>,
@@ -81,11 +85,13 @@ impl TaskManager {
             job_type: JobType::Polling,
             status: JobStatus::Pending,
             priority,
-            scheduled_at,
+            scheduled_at: None,
             parent_job_id: None,
             max_retries,
             retries: 0,
             payload: to_value(payload)?,
+            cron: None,
+            interval: interval,
         };
 
         self.db.create_job(job_data).await

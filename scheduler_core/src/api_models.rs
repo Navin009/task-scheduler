@@ -7,7 +7,9 @@ use uuid::Uuid;
 #[derive(Debug, Deserialize, Serialize)]
 pub struct JobCreate {
     pub schedule_type: JobType,
-    pub schedule: DateTime<Utc>,
+    pub cron: Option<String>,
+    pub interval: Option<u32>,
+    pub schedule_at: Option<DateTime<Utc>>,
     pub payload: Value,
     pub max_retries: u32,
     pub template_id: Option<i32>,

@@ -10,29 +10,22 @@ CREATE TABLE templates (
     description TEXT,
     job_type job_type NOT NULL,
     schedule_type schedule_type NOT NULL,
-    schedule JSONB NOT NULL,
+    schedule VARCHAR(30) NOT NULL,
     priority INTEGER NOT NULL DEFAULT 0,
     max_retries INTEGER NOT NULL DEFAULT 3,
     metadata JSONB,
     active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT valid_template_schedule CHECK (
-        (schedule_type = 'one_time' AND schedule ? 'run_at') OR
-        (schedule_type = 'recurring' AND schedule ? 'cron_expression') OR
-        (schedule_type = 'polling' AND schedule ? 'interval')
-    )
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Create jobs table with partitioning
 CREATE TABLE jobs (
     id UUID NOT NULL,
-    name VARCHAR(255) NOT NULL,
     description TEXT,
-    schedule_type schedule_type NOT NULL,
-    schedule JSONB NOT NULL,
+    parent_job_id UUID,
+    reference_id text,
     status job_status NOT NULL DEFAULT 'pending',
-    job_type job_type NOT NULL,
     priority INTEGER NOT NULL DEFAULT 0,
     max_retries INTEGER NOT NULL DEFAULT 3,
     retries INTEGER NOT NULL DEFAULT 0,
@@ -55,7 +48,6 @@ CREATE TABLE jobs_default PARTITION OF jobs default;
 -- Create indexes
 CREATE INDEX idx_jobs_status ON jobs (status);
 CREATE INDEX idx_jobs_next_run_at ON jobs (next_run_at);
-CREATE INDEX idx_jobs_type ON jobs (job_type);
 CREATE INDEX idx_templates_name ON templates (name);
 
 -- Create function to update updated_at timestamp

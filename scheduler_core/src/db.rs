@@ -13,11 +13,6 @@ pub struct Database {
     pool: PgPool,
 }
 
-/// Generates a new UUID for table inserts
-pub fn generate_uuid() -> String {
-    Uuid::new_v4().to_string()
-}
-
 #[derive(Debug)]
 pub struct JobData {
     pub job_type: JobType,
@@ -38,15 +33,14 @@ impl Database {
 
     // Low-level job operations
     pub async fn create_job(&self, job_data: JobData) -> Result<String> {
-        let id = generate_uuid();
+        let id = Uuid::new_v4();
         let query = r#"
-            INSERT INTO jobs (job_type, status, priority, scheduled_at, parent_job_id, max_retries, retries, payload, id, created_at, updated_at)
-                    VALUES ($1, $2, $3, $4::timestamp with time zone, $5, $6, $7, $8, $9, NOW(), NOW())
+            INSERT INTO jobs (status, priority, scheduled_at, parent_job_id, max_retries, retries, payload, id, created_at, updated_at)
+                    VALUES ($1, $2, $3::timestamp with time zone, $4, $5, $6, $7, $8, NOW(), NOW())
             RETURNING id
         "#;
 
         let result = sqlx::query(query)
-            .bind(job_data.job_type)
             .bind(job_data.status)
             .bind(job_data.priority)
             .bind(job_data.scheduled_at)
@@ -57,9 +51,9 @@ impl Database {
             .bind(&id)
             .fetch_one(&self.pool)
             .await?
-            .get::<String, _>("id");
+            .get::<Uuid, _>("id");
 
-        Ok(result)
+        Ok(result.to_string())
     }
 
     pub async fn get_job(&self, id: &str) -> Result<Option<HashMap<String, String>>> {

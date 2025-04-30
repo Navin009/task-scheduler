@@ -132,7 +132,7 @@ pub async fn update_job(
                     .map_err(|e| ApiError::InternalServerError(e.to_string()))?;
             }
 
-            if let Some(_schedule) = job_update.schedule {
+            if let Some(_schedule) = job_update.schedule_at {
                 // For now, we can't update schedule directly
                 return Err(ApiError::BadRequest(
                     "Schedule updates are not supported yet".into(),

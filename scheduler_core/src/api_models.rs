@@ -11,14 +11,16 @@ pub struct JobCreate {
     pub interval: Option<u32>,
     pub schedule_at: Option<DateTime<Utc>>,
     pub payload: Value,
-    pub max_retries: u32,
+    pub max_retries: Option<u32>,
     pub template_id: Option<i32>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct JobUpdate {
     pub schedule_type: Option<JobType>,
-    pub schedule: Option<DateTime<Utc>>,
+    pub cron: Option<String>,
+    pub interval: Option<u32>,
+    pub schedule_at: Option<DateTime<Utc>>,
     pub payload: Option<Value>,
     pub max_retries: Option<u32>,
 }

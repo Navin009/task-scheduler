@@ -1,6 +1,6 @@
 use env_logger::Builder;
 use log::LevelFilter;
-use scheduler_core::{cache::Cache, db::Database, task::TaskManager};
+use scheduler_core::{db::Database, task::TaskManager};
 use serde_yaml::Value;
 use std::collections::HashMap;
 
@@ -13,7 +13,7 @@ pub struct AppConfig {
 }
 
 impl AppConfig {
-    pub fn new(db: Database, cache: Cache) -> Self {
+    pub fn new(db: Database) -> Self {
         Self {
             task_manager: TaskManager::new(db),
             config: HashMap::new(),

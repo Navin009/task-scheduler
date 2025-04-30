@@ -4,10 +4,7 @@ extern crate rocket;
 use crate::config::AppConfig;
 use middleware::logging::LoggerFairing;
 use rocket::{Build, Rocket};
-use scheduler_core::{
-    config::Config,
-    init::{init_cache, init_database},
-};
+use scheduler_core::{config::Config, init::init_database};
 use security::jwt::JWTAuthenticator;
 
 mod config;
@@ -27,11 +24,7 @@ async fn rocket() -> Rocket<Build> {
         .await
         .expect("Failed to initialize database connection");
 
-    let cache = init_cache(&config)
-        .await
-        .expect("Failed to initialize cache connection");
-
-    let app_config = AppConfig::new(db, cache);
+    let app_config = AppConfig::new(db);
 
     rocket::build()
         .manage(JWTAuthenticator::new())

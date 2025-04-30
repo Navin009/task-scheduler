@@ -48,9 +48,6 @@ pub async fn create_job(
                 .map_err(|e| ApiError::InternalServerError(e.to_string()))?;
         }
         JobType::Recurring => {
-            // Validate cron expression
-            let now = Utc::now();
-
             state
                 .task_manager
                 .create_recurring_job(job_id.clone(), job.schedule, 0, payload)
@@ -61,15 +58,6 @@ pub async fn create_job(
             // Parse and validate polling config
             let polling_config: serde_json::Value = serde_json::from_str(&job.schedule.to_string())
                 .map_err(|_| ApiError::ValidationError("Invalid polling config format".into()))?;
-
-            let interval = polling_config
-                .get("interval")
-                .and_then(|v| v.as_u64())
-                .ok_or_else(|| {
-                    ApiError::ValidationError(
-                        "Missing or invalid interval in polling config".into(),
-                    )
-                })?;
 
             let max_attempts = polling_config
                 .get("max_attempts")
@@ -133,15 +121,8 @@ pub async fn update_job(
         .await
         .map_err(|e| ApiError::InternalServerError(e.to_string()))?
     {
-        Some(existing_job) => {
-            if let Some(schedule_type) = job_update.schedule_type {
-                // Convert schedule type to job type
-                let job_type = match schedule_type {
-                    JobType::OneTime => JobType::OneTime,
-                    JobType::Recurring => JobType::Recurring,
-                    JobType::Polling => JobType::Polling,
-                };
-                // Update job type through status update (temporary workaround)
+        Some(_existing_job) => {
+            if let Some(_schedule_type) = job_update.schedule_type {
                 state
                     .task_manager
                     .update_job_status(&id, JobStatus::Pending)
@@ -149,21 +130,21 @@ pub async fn update_job(
                     .map_err(|e| ApiError::InternalServerError(e.to_string()))?;
             }
 
-            if let Some(schedule) = job_update.schedule {
+            if let Some(_schedule) = job_update.schedule {
                 // For now, we can't update schedule directly
                 return Err(ApiError::BadRequest(
                     "Schedule updates are not supported yet".into(),
                 ));
             }
 
-            if let Some(payload) = job_update.payload {
+            if let Some(_payload) = job_update.payload {
                 // For now, we can't update payload directly
                 return Err(ApiError::BadRequest(
                     "Payload updates are not supported yet".into(),
                 ));
             }
 
-            if let Some(max_retries) = job_update.max_retries {
+            if let Some(_max_retries) = job_update.max_retries {
                 // For now, we can't update max retries directly
                 return Err(ApiError::BadRequest(
                     "Max retries updates are not supported yet".into(),

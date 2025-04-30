@@ -3,7 +3,7 @@ use chrono::{DateTime, Duration, Utc};
 use scheduler_core::{
     cache::Cache,
     db::{Database, JobData},
-    models::{Job, Template},
+    models::Template,
 };
 use tracing::{info, warn};
 

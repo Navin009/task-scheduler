@@ -1,6 +1,6 @@
 use crate::config::AppConfig;
 use crate::error::ApiError;
-use chrono::{DateTime, Utc};
+use chrono::Utc;
 use rocket::delete;
 use rocket::get;
 use rocket::post;
@@ -16,20 +16,10 @@ use uuid::Uuid;
 fn convert_task_job_to_core_job(task_job: TaskJob) -> CoreJob {
     CoreJob {
         id: task_job.id,
-        schedule_type: match task_job.job_type {
-            JobType::OneTime => JobType::OneTime,
-            JobType::Recurring => JobType::Recurring,
-            JobType::Polling => JobType::Polling,
-        },
+        schedule_type: task_job.job_type,
         schedule: task_job.scheduled_at,
         payload: serde_json::to_value(task_job.payload).unwrap(),
-        status: match task_job.status {
-            JobStatus::Pending => JobStatus::Pending,
-            JobStatus::Running => JobStatus::Running,
-            JobStatus::Completed => JobStatus::Completed,
-            JobStatus::Failed => JobStatus::Failed,
-            JobStatus::Retrying => JobStatus::Retrying,
-        },
+        status: task_job.status,
         created_at: Utc::now(),
         updated_at: Utc::now(),
         retries: task_job.retries,
@@ -51,22 +41,15 @@ pub async fn create_job(
 
     match job.schedule_type {
         JobType::OneTime => {
-            // Validate and parse the scheduled time
-            let scheduled_at = DateTime::parse_from_rfc3339(&job.schedule).map_err(|_| {
-                ApiError::ValidationError("Invalid datetime format. Use ISO 8601 format".into())
-            })?;
-
             state
                 .task_manager
-                .create_one_time_job(scheduled_at.to_rfc3339(), 0, payload)
+                .create_one_time_job(job.schedule, 0, payload)
                 .await
                 .map_err(|e| ApiError::InternalServerError(e.to_string()))?;
         }
         JobType::Recurring => {
             // Validate cron expression
             let now = Utc::now();
-            cron_parser::parse(&job.schedule, &now)
-                .map_err(|e| ApiError::ValidationError(e.to_string()))?;
 
             state
                 .task_manager
@@ -76,7 +59,7 @@ pub async fn create_job(
         }
         JobType::Polling => {
             // Parse and validate polling config
-            let polling_config: serde_json::Value = serde_json::from_str(&job.schedule)
+            let polling_config: serde_json::Value = serde_json::from_str(&job.schedule.to_string())
                 .map_err(|_| ApiError::ValidationError("Invalid polling config format".into()))?;
 
             let interval = polling_config

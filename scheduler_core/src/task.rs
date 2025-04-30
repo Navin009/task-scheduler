@@ -1,5 +1,6 @@
 use crate::{JobStatus, JobType, db::Database};
 use anyhow::Result;
+use chrono::{NaiveDate, NaiveDateTime};
 use serde::{Deserialize, Serialize};
 use serde_json::to_value;
 use std::collections::HashMap;
@@ -29,7 +30,7 @@ impl TaskManager {
 
     pub async fn create_one_time_job(
         &self,
-        scheduled_at: String,
+        scheduled_at: NaiveDateTime,
         priority: i32,
         payload: HashMap<String, String>,
     ) -> Result<String> {
@@ -50,7 +51,7 @@ impl TaskManager {
     pub async fn create_recurring_job(
         &self,
         parent_job_id: String,
-        scheduled_at: String,
+        scheduled_at: NaiveDateTime,
         priority: i32,
         payload: HashMap<String, String>,
     ) -> Result<String> {
@@ -70,7 +71,7 @@ impl TaskManager {
 
     pub async fn create_polling_job(
         &self,
-        scheduled_at: String,
+        scheduled_at: NaiveDateTime,
         priority: i32,
         max_retries: i32,
         payload: HashMap<String, String>,

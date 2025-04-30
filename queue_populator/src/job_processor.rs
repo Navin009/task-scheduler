@@ -1,23 +1,20 @@
 use scheduler_core::{cache::Cache, db::Database, task::TaskManager, JobStatus};
-use sqlx::PgPool;
 use tracing::error;
 
 use crate::error::{QueuePopulatorError, Result};
 
 pub struct JobProcessor {
-    db_pool: PgPool,
     cache: Cache,
     task_manager: TaskManager,
 }
 
 impl JobProcessor {
-    pub async fn new(db_pool: PgPool, cache: Cache, database_url: &str) -> Result<Self> {
+    pub async fn new(cache: Cache, database_url: &str) -> Result<Self> {
         let db = Database::new(database_url)
             .await
             .map_err(QueuePopulatorError::from)?;
         let task_manager = TaskManager::new(db);
         Ok(Self {
-            db_pool,
             cache,
             task_manager,
         })
@@ -72,8 +69,6 @@ impl JobProcessor {
     }
 
     fn get_queue_name(&self, job: &scheduler_core::task::Job) -> Option<String> {
-        // Implement the logic to determine the queue name based on the job
-        // This is a placeholder and should be replaced with the actual implementation
         None
     }
 }

@@ -6,6 +6,7 @@ use serde_json::json;
 use std::fmt;
 use thiserror::Error;
 
+#[allow(dead_code)]
 #[derive(Error, Debug)]
 pub enum Error {
     #[error("Database error: {0}")]
@@ -91,16 +92,19 @@ impl<'r> Responder<'r, 'static> for ApiError {
     }
 }
 
+#[allow(dead_code)]
 #[catch(404)]
 pub fn not_found(req: &Request) -> String {
     format!("Sorry, '{}' is not a valid path.", req.uri())
 }
 
+#[allow(dead_code)]
 #[catch(422)]
 pub fn unprocessable_entity() -> String {
     "The request was well-formed but was unable to be followed due to semantic errors.".to_string()
 }
 
+#[allow(dead_code)]
 #[catch(500)]
 pub fn internal_server_error() -> String {
     "Whoops! Looks like we messed up.".to_string()

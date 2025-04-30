@@ -1,6 +1,6 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation, decode, encode};
+use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
 
 use crate::guard::jwt_auth::Claims;
 
@@ -12,10 +12,11 @@ pub struct JWTAuthenticator {
 impl JWTAuthenticator {
     pub fn new() -> Self {
         JWTAuthenticator {
-            jwt_secret: "secret".to_string(), // In real apps, use a more secure secret
+            jwt_secret: "secret".to_string(),
         }
     }
 
+    #[allow(dead_code)]
     pub fn create_jwt(&self, username: &str) -> String {
         let expiration = SystemTime::now()
             .duration_since(UNIX_EPOCH)

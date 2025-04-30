@@ -1,8 +1,7 @@
 use crate::models::JobType;
-use chrono::{DateTime, NaiveDateTime, Utc};
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::fmt;
 use uuid::Uuid;
 
 #[derive(Debug, Deserialize, Serialize)]

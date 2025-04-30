@@ -6,7 +6,6 @@ pub use error::Error;
 pub use manager::RecurrenceManager;
 
 use anyhow::Result;
-use tokio::sync::broadcast;
 
 pub struct Manager {
     // Add necessary fields here

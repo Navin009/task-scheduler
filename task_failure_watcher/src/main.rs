@@ -6,7 +6,6 @@ use scheduler_core::{
     cache::{Cache, CacheConfig},
     config::Config,
     db::Database,
-    models::JobStatus,
     task::TaskManager,
 };
 use std::time::Duration as StdDuration;

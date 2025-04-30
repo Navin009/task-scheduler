@@ -1,4 +1,4 @@
-use chrono::{Duration, Utc};
+use chrono::Duration;
 use chrono_tz::UTC;
 use scheduler_core::{cache::Cache, config::Config, db::Database};
 use task_recurrence_manager::RecurrenceManager;
@@ -22,13 +22,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cache = Cache::new(cache_config).await?;
 
     // Create recurrence manager
-    let manager = RecurrenceManager::new(
-        db,
-        cache,
-        UTC,                 // Using UTC as default timezone
-        Duration::hours(24), // Look ahead 24 hours
-    )
-    .await?;
+    let manager = RecurrenceManager::new(db, cache, UTC, Duration::hours(24)).await?;
 
     info!("Starting task recurrence manager");
 

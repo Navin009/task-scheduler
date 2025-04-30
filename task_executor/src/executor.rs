@@ -91,7 +91,11 @@ impl TaskExecutor {
                         "polling" => JobType::Polling,
                         _ => return Err(Error::Process("Invalid schedule type".into())),
                     },
-                    schedule: job_data.get("schedule").unwrap().clone(),
+                    schedule: chrono::DateTime::parse_from_rfc3339(
+                        job_data.get("schedule").unwrap(),
+                    )
+                    .unwrap()
+                    .with_timezone(&chrono::Utc),
                     payload: serde_json::from_str(job_data.get("payload").unwrap())?,
                     status: match job_data.get("status").unwrap().as_str() {
                         "pending" => JobStatus::Pending,

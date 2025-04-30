@@ -1,6 +1,7 @@
-use crate::{JobStatus, JobType};
 use crate::models::Template;
+use crate::{JobStatus, JobType};
 use anyhow::Result;
+use chrono::{DateTime, Utc};
 use serde_json::Value;
 use sqlx::postgres::{PgPool, PgRow};
 use sqlx::{Column, Row};
@@ -16,7 +17,7 @@ pub struct JobData {
     pub job_type: JobType,
     pub status: JobStatus,
     pub priority: i32,
-    pub scheduled_at: String,
+    pub scheduled_at: DateTime<Utc>,
     pub parent_job_id: Option<String>,
     pub max_retries: i32,
     pub retries: i32,
@@ -33,7 +34,7 @@ impl Database {
     pub async fn create_job(&self, job_data: JobData) -> Result<String> {
         let query = r#"
             INSERT INTO jobs (job_type, status, priority, scheduled_at, parent_job_id, max_retries, retries, payload, created_at, updated_at)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
+                    VALUES ($1, $2, $3, $4::timestamp with time zone, $5, $6, $7, $8, NOW(), NOW())
                 RETURNING id
         "#;
 

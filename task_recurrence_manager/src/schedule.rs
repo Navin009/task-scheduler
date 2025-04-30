@@ -1,6 +1,5 @@
 use chrono::{DateTime, Duration, Utc};
 use cron_parser::parse;
-use cron_parser::ParseError;
 use scheduler_core::models::{Job, JobType, Template};
 use std::collections::HashSet;
 
@@ -32,7 +31,7 @@ impl ScheduleExpander {
                     let job = Job {
                         id: uuid::Uuid::new_v4().to_string(),
                         schedule_type: JobType::Recurring,
-                        schedule: template.cron_pattern.clone(),
+                        schedule: next_time,
                         payload: template.payload_template.clone(),
                         status: scheduler_core::models::JobStatus::Pending,
                         created_at: Utc::now(),

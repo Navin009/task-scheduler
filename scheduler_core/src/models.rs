@@ -7,7 +7,7 @@ use sqlx::{FromRow, Type};
 pub struct Job {
     pub id: String,
     pub schedule_type: JobType,
-    pub schedule: String,
+    pub schedule: DateTime<Utc>,
     pub payload: serde_json::Value,
     pub status: JobStatus,
     pub created_at: DateTime<Utc>,
@@ -38,7 +38,7 @@ pub enum JobStatus {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
-#[sqlx(type_name = "job_type")]
+#[sqlx(type_name = "_type")]
 #[sqlx(rename_all = "snake_case")]
 #[serde(rename_all = "snake_case")]
 pub enum JobType {
@@ -81,17 +81,19 @@ impl Job {
         match self.schedule_type {
             JobType::Recurring => {
                 let now = Utc::now();
-                cron_parser::parse(&self.schedule, &now)
+                cron_parser::parse(&self.schedule.to_rfc3339(), &now)
                     .map_err(|e| Error::ValidationError(e.to_string()))?;
             }
             JobType::OneTime => {
-                DateTime::parse_from_rfc3339(&self.schedule).map_err(|_| {
+                DateTime::parse_from_rfc3339(&self.schedule.to_rfc3339()).map_err(|_| {
                     Error::ValidationError("Invalid datetime format. Use ISO 8601 format".into())
                 })?;
             }
             JobType::Polling => {
-                let polling_config: serde_json::Value = serde_json::from_str(&self.schedule)
-                    .map_err(|_| Error::ValidationError("Invalid polling config format".into()))?;
+                let polling_config: serde_json::Value =
+                    serde_json::from_str(&self.schedule.to_rfc3339()).map_err(|_| {
+                        Error::ValidationError("Invalid polling config format".into())
+                    })?;
 
                 if !polling_config.is_object() {
                     return Err(Error::ValidationError(

@@ -1,6 +1,6 @@
 use crate::{JobStatus, JobType, db::Database};
 use anyhow::Result;
-use chrono::{NaiveDate, NaiveDateTime};
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::to_value;
 use std::collections::HashMap;
@@ -11,7 +11,7 @@ pub struct Job {
     pub job_type: JobType,
     pub status: JobStatus,
     pub priority: i32,
-    pub scheduled_at: String,
+    pub scheduled_at: DateTime<Utc>,
     pub parent_job_id: Option<String>,
     pub max_retries: i32,
     pub retries: i32,
@@ -30,7 +30,7 @@ impl TaskManager {
 
     pub async fn create_one_time_job(
         &self,
-        scheduled_at: NaiveDateTime,
+        scheduled_at: DateTime<Utc>,
         priority: i32,
         payload: HashMap<String, String>,
     ) -> Result<String> {
@@ -38,7 +38,7 @@ impl TaskManager {
             job_type: JobType::OneTime,
             status: JobStatus::Pending,
             priority,
-            scheduled_at: format!("{}::timestamp with time zone", scheduled_at),
+            scheduled_at,
             parent_job_id: None,
             max_retries: 3,
             retries: 0,
@@ -51,7 +51,7 @@ impl TaskManager {
     pub async fn create_recurring_job(
         &self,
         parent_job_id: String,
-        scheduled_at: NaiveDateTime,
+        scheduled_at: DateTime<Utc>,
         priority: i32,
         payload: HashMap<String, String>,
     ) -> Result<String> {
@@ -59,7 +59,7 @@ impl TaskManager {
             job_type: JobType::Recurring,
             status: JobStatus::Pending,
             priority,
-            scheduled_at: format!("{}::timestamp with time zone", scheduled_at),
+            scheduled_at,
             parent_job_id: Some(parent_job_id),
             max_retries: 3,
             retries: 0,
@@ -71,7 +71,7 @@ impl TaskManager {
 
     pub async fn create_polling_job(
         &self,
-        scheduled_at: NaiveDateTime,
+        scheduled_at: DateTime<Utc>,
         priority: i32,
         max_retries: i32,
         payload: HashMap<String, String>,
@@ -80,7 +80,7 @@ impl TaskManager {
             job_type: JobType::Polling,
             status: JobStatus::Pending,
             priority,
-            scheduled_at: format!("{}::timestamp with time zone", scheduled_at),
+            scheduled_at,
             parent_job_id: None,
             max_retries,
             retries: 0,
@@ -109,7 +109,9 @@ impl TaskManager {
                 _ => panic!("Invalid job status"),
             },
             priority: data.get("priority").unwrap().parse().unwrap(),
-            scheduled_at: data.get("scheduled_at").unwrap().clone(),
+            scheduled_at: DateTime::parse_from_rfc3339(data.get("scheduled_at").unwrap())
+                .unwrap()
+                .with_timezone(&Utc),
             parent_job_id: data.get("parent_job_id").map(|s| s.clone()),
             max_retries: data.get("max_retries").unwrap().parse().unwrap(),
             retries: data.get("retries").unwrap().parse().unwrap(),
@@ -152,7 +154,9 @@ impl TaskManager {
                     _ => panic!("Invalid job status"),
                 },
                 priority: data.get("priority").unwrap().parse().unwrap(),
-                scheduled_at: data.get("scheduled_at").unwrap().clone(),
+                scheduled_at: DateTime::parse_from_rfc3339(data.get("scheduled_at").unwrap())
+                    .unwrap()
+                    .with_timezone(&Utc),
                 parent_job_id: data.get("parent_job_id").map(|s| s.clone()),
                 max_retries: data.get("max_retries").unwrap().parse().unwrap(),
                 retries: data.get("retries").unwrap().parse().unwrap(),
@@ -183,7 +187,9 @@ impl TaskManager {
                     _ => panic!("Invalid job status"),
                 },
                 priority: data.get("priority").unwrap().parse().unwrap(),
-                scheduled_at: data.get("scheduled_at").unwrap().clone(),
+                scheduled_at: DateTime::parse_from_rfc3339(data.get("scheduled_at").unwrap())
+                    .unwrap()
+                    .with_timezone(&Utc),
                 parent_job_id: data.get("parent_job_id").map(|s| s.clone()),
                 max_retries: data.get("max_retries").unwrap().parse().unwrap(),
                 retries: data.get("retries").unwrap().parse().unwrap(),
@@ -219,7 +225,9 @@ impl TaskManager {
                     _ => panic!("Invalid job status"),
                 },
                 priority: data.get("priority").unwrap().parse().unwrap(),
-                scheduled_at: data.get("scheduled_at").unwrap().clone(),
+                scheduled_at: DateTime::parse_from_rfc3339(data.get("scheduled_at").unwrap())
+                    .unwrap()
+                    .with_timezone(&Utc),
                 parent_job_id: data.get("parent_job_id").map(|s| s.clone()),
                 max_retries: data.get("max_retries").unwrap().parse().unwrap(),
                 retries: data.get("retries").unwrap().parse().unwrap(),
@@ -256,7 +264,9 @@ impl TaskManager {
                     _ => panic!("Invalid job status"),
                 },
                 priority: data.get("priority").unwrap().parse().unwrap(),
-                scheduled_at: data.get("scheduled_at").unwrap().clone(),
+                scheduled_at: DateTime::parse_from_rfc3339(data.get("scheduled_at").unwrap())
+                    .unwrap()
+                    .with_timezone(&Utc),
                 parent_job_id: data.get("parent_job_id").map(|s| s.clone()),
                 max_retries: data.get("max_retries").unwrap().parse().unwrap(),
                 retries: data.get("retries").unwrap().parse().unwrap(),

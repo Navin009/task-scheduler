@@ -1,12 +1,13 @@
 use crate::models::JobType;
-use chrono::NaiveDateTime;
-use serde::{Deserialize, Serialize};
+use chrono::{DateTime, NaiveDateTime, Utc};
+use serde::{Deserialize, Serialize, de::Visitor};
 use serde_json::Value;
+use std::fmt;
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct JobCreate {
     pub schedule_type: JobType,
-    pub schedule: NaiveDateTime,
+    pub schedule: DateTime<Utc>,
     pub payload: Value,
     pub max_retries: u32,
     pub template_id: Option<i32>,
@@ -15,7 +16,7 @@ pub struct JobCreate {
 #[derive(Debug, Deserialize, Serialize)]
 pub struct JobUpdate {
     pub schedule_type: Option<JobType>,
-    pub schedule: Option<NaiveDateTime>,
+    pub schedule: Option<DateTime<Utc>>,
     pub payload: Option<Value>,
     pub max_retries: Option<u32>,
 }

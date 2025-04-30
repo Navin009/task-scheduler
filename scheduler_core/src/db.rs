@@ -65,7 +65,7 @@ impl Database {
     pub async fn create_template(&self, job_data: JobData) -> Result<String> {
         let id = Uuid::new_v4();
         let query = r#"
-            INSERT INTO templates (id, name, description, job_type, priority, max_retries, interval, cron, schedule_at, max_attempts, metadata, active, created_at, updated_at)
+            INSERT INTO templates (id, name, description, job_type, priority, max_retries, interval, cron, schedule_at, max_attempts, payload, active, created_at, updated_at)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW(), NOW())
             RETURNING id
         "#;
@@ -80,6 +80,7 @@ impl Database {
             .bind(job_data.cron)
             .bind(job_data.schedule_at.unwrap())
             .bind(job_data.max_attempts)
+            .bind(job_data.payload)
             .bind(true)
             .fetch_one(&self.pool)
             .await?

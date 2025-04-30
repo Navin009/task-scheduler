@@ -1,10 +1,10 @@
-use crate::{JobStatus, JobType, SchedulerError, db::Database};
+use crate::{JobStatus, JobType, db::Database};
 use anyhow::Result;
 use chrono::{DateTime, Utc};
+use cron_parser::parse;
 use serde::{Deserialize, Serialize};
 use serde_json::to_value;
 use std::collections::HashMap;
-use std::str::FromStr;
 use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -66,8 +66,9 @@ impl TaskManager {
     ) -> Result<String> {
         //based on the cron, calculate the next run time
         let schedule_at = cron_pattern.clone().map(|c| {
-            let schedule = cron::Schedule::from_str(&c).expect("Invalid cron expression");
-            schedule.upcoming(Utc).next().expect("No upcoming schedule")
+            parse(&c, &Utc::now())
+                .expect("Invalid cron expression")
+                .with_timezone(&Utc)
         });
 
         let job_data = crate::db::JobData {
@@ -84,8 +85,8 @@ impl TaskManager {
             name: None,
             description: None,
             max_attempts: 1,
-            metadata: None,
             active: true,
+            metadata: None,
         };
 
         self.db.create_template(job_data).await

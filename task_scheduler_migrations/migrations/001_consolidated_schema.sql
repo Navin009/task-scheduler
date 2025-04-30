@@ -6,7 +6,7 @@ CREATE TYPE job_type AS ENUM ('one_time', 'recurring', 'polling');
 -- Create templates table
 CREATE TABLE templates (
     id UUID PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
+    name VARCHAR(255),
     description TEXT,
     job_type job_type NOT NULL,
     priority INTEGER NOT NULL DEFAULT 0,

@@ -55,24 +55,15 @@ pub async fn create_job(
                 .map_err(|e| ApiError::InternalServerError(e.to_string()))?;
         }
         JobType::Polling => {
-            // Parse and validate polling config
-            let polling_config: serde_json::Value =
-                serde_json::from_str(&job.interval.unwrap().to_string()).map_err(|_| {
-                    ApiError::ValidationError("Invalid polling config format".into())
-                })?;
-
-            let max_attempts = polling_config
-                .get("max_attempts")
-                .and_then(|v| v.as_u64())
-                .ok_or_else(|| {
-                    ApiError::ValidationError(
-                        "Missing or invalid max_attempts in polling config".into(),
-                    )
-                })?;
-
             state
                 .task_manager
-                .create_polling_job(job.interval, 0, max_attempts as i32, payload)
+                .create_polling_job(
+                    job.interval,
+                    0,
+                    job.schedule_at,
+                    job.max_retries.unwrap_or(3) as i32,
+                    payload,
+                )
                 .await
                 .map_err(|e| ApiError::InternalServerError(e.to_string()))?;
         }

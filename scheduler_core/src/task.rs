@@ -96,6 +96,7 @@ impl TaskManager {
         &self,
         interval: Option<u32>,
         priority: i32,
+        schedule_at: Option<DateTime<Utc>>,
         max_retries: i32,
         payload: HashMap<String, String>,
     ) -> Result<String> {
@@ -103,7 +104,7 @@ impl TaskManager {
             job_type: JobType::Polling,
             status: JobStatus::Pending,
             priority,
-            schedule_at: None,
+            schedule_at: schedule_at,
             parent_job_id: None,
             max_retries,
             retries: 0,

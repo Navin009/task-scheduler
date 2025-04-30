@@ -46,20 +46,11 @@ CREATE TABLE jobs (
     scheduled_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     metadata JSONB,
     template_id UUID REFERENCES templates(id),
-    CONSTRAINT valid_schedule CHECK (
-        (schedule_type = 'one_time' AND schedule ? 'run_at') OR
-        (schedule_type = 'recurring' AND schedule ? 'cron_expression') OR
-        (schedule_type = 'polling' AND schedule ? 'interval')
-    ),
-    PRIMARY KEY (id, next_run_at)
-) PARTITION BY RANGE (next_run_at);
+    PRIMARY KEY (id, created_at)
+) PARTITION BY RANGE (created_at);
 
--- Create partitions
-CREATE TABLE jobs_past PARTITION OF jobs
-    FOR VALUES FROM (MINVALUE) TO (CURRENT_TIMESTAMP);
-
-CREATE TABLE jobs_future PARTITION OF jobs
-    FOR VALUES FROM (CURRENT_TIMESTAMP) TO (MAXVALUE);
+-- Create default partition
+CREATE TABLE jobs_default PARTITION OF jobs default;
 
 -- Create indexes
 CREATE INDEX idx_jobs_status ON jobs (status);

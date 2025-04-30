@@ -33,7 +33,7 @@ pub async fn create_job(
     job: Json<JobCreate>,
 ) -> Result<Json<JobResponse>, ApiError> {
     let job = job.into_inner();
-    let job_id = Uuid::new_v4().to_string();
+    let job_id = Uuid::new_v4();
 
     // Convert payload to HashMap
     let payload = serde_json::from_value::<HashMap<String, String>>(job.payload)

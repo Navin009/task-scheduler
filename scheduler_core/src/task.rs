@@ -4,6 +4,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::to_value;
 use std::collections::HashMap;
+use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Job {
@@ -50,7 +51,7 @@ impl TaskManager {
 
     pub async fn create_recurring_job(
         &self,
-        parent_job_id: String,
+        parent_job_id: Uuid,
         scheduled_at: DateTime<Utc>,
         priority: i32,
         payload: HashMap<String, String>,

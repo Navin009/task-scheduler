@@ -1,8 +1,9 @@
 use crate::models::JobType;
 use chrono::{DateTime, NaiveDateTime, Utc};
-use serde::{Deserialize, Serialize, de::Visitor};
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::fmt;
+use uuid::Uuid;
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct JobCreate {
@@ -37,7 +38,7 @@ pub struct TemplateUpdate {
 #[derive(Debug, Serialize)]
 pub struct JobResponse {
     pub message: String,
-    pub job_id: String,
+    pub job_id: Uuid,
 }
 
 #[derive(Debug, Serialize)]

@@ -6,6 +6,7 @@ use serde_json::Value;
 use sqlx::postgres::{PgPool, PgRow};
 use sqlx::{Column, Row};
 use std::collections::HashMap;
+use uuid::Uuid;
 
 #[derive(Debug, Clone)]
 pub struct Database {
@@ -18,7 +19,7 @@ pub struct JobData {
     pub status: JobStatus,
     pub priority: i32,
     pub scheduled_at: DateTime<Utc>,
-    pub parent_job_id: Option<String>,
+    pub parent_job_id: Option<Uuid>,
     pub max_retries: i32,
     pub retries: i32,
     pub payload: Value,

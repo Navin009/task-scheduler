@@ -85,12 +85,6 @@ impl TaskExecutor {
                 // Convert HashMap to Job
                 let job = Job {
                     id: job_data.get("id").unwrap().clone(),
-                    schedule_type: match job_data.get("schedule_type").unwrap().as_str() {
-                        "one_time" => JobType::OneTime,
-                        "recurring" => JobType::Recurring,
-                        "polling" => JobType::Polling,
-                        _ => return Err(Error::Process("Invalid schedule type".into())),
-                    },
                     schedule: chrono::DateTime::parse_from_rfc3339(
                         job_data.get("schedule").unwrap(),
                     )

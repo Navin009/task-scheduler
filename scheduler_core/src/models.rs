@@ -7,7 +7,6 @@ use uuid::Uuid;
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct Job {
     pub id: String,
-    pub schedule_type: JobType,
     pub schedule: DateTime<Utc>,
     pub payload: serde_json::Value,
     pub status: JobStatus,
@@ -79,54 +78,9 @@ impl From<JobType> for String {
 
 impl Job {
     pub fn validate(&self) -> Result<(), Error> {
-        match self.schedule_type {
-            JobType::Recurring => {
-                let now = Utc::now();
-                cron_parser::parse(&self.schedule.to_rfc3339(), &now)
-                    .map_err(|e| Error::ValidationError(e.to_string()))?;
-            }
-            JobType::OneTime => {
-                DateTime::parse_from_rfc3339(&self.schedule.to_rfc3339()).map_err(|_| {
-                    Error::ValidationError("Invalid datetime format. Use ISO 8601 format".into())
-                })?;
-            }
-            JobType::Polling => {
-                let polling_config: serde_json::Value =
-                    serde_json::from_str(&self.schedule.to_rfc3339()).map_err(|_| {
-                        Error::ValidationError("Invalid polling config format".into())
-                    })?;
-
-                if !polling_config.is_object() {
-                    return Err(Error::ValidationError(
-                        "Polling config must be a JSON object".into(),
-                    ));
-                }
-
-                let interval = polling_config
-                    .get("interval")
-                    .and_then(|v| v.as_u64())
-                    .ok_or_else(|| {
-                        Error::ValidationError(
-                            "Missing or invalid interval in polling config".into(),
-                        )
-                    })?;
-
-                let max_attempts = polling_config
-                    .get("max_attempts")
-                    .and_then(|v| v.as_u64())
-                    .ok_or_else(|| {
-                        Error::ValidationError(
-                            "Missing or invalid max_attempts in polling config".into(),
-                        )
-                    })?;
-
-                if interval == 0 || max_attempts == 0 {
-                    return Err(Error::ValidationError(
-                        "Interval and max_attempts must be greater than 0".into(),
-                    ));
-                }
-            }
-        }
+        DateTime::parse_from_rfc3339(&self.schedule.to_rfc3339()).map_err(|_| {
+            Error::ValidationError("Invalid datetime format. Use ISO 8601 format".into())
+        })?;
         Ok(())
     }
 }

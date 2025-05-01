@@ -19,7 +19,6 @@ pub struct JobData {
     pub status: JobStatus,
     pub parent_job_id: Option<Uuid>,
     pub description: Option<String>,
-    pub job_type: JobType,
     pub priority: i32,
     pub max_retries: i32,
     pub retries: i32,
@@ -62,7 +61,7 @@ impl Database {
         Ok(result.to_string())
     }
 
-    pub async fn create_template(&self, job_data: JobData) -> Result<String> {
+    pub async fn create_template(&self, job_data: JobData, job_type: JobType) -> Result<String> {
         let id = Uuid::new_v4();
         let query = r#"
             INSERT INTO templates (id, name, description, job_type, priority, max_retries, interval, cron, schedule_at, max_attempts, payload, active, created_at, updated_at)
@@ -73,7 +72,7 @@ impl Database {
             .bind(&id)
             .bind(job_data.name)
             .bind(job_data.description)
-            .bind(job_data.job_type)
+            .bind(job_type)
             .bind(job_data.priority)
             .bind(job_data.max_retries)
             .bind(job_data.interval.unwrap_or(0) as i32)
@@ -90,8 +89,10 @@ impl Database {
     }
 
     pub async fn get_job(&self, id: &str) -> Result<Option<HashMap<String, String>>> {
+        let uuid =
+            Uuid::parse_str(id).map_err(|e| anyhow::anyhow!("Invalid UUID format: {}", e))?;
         let row = sqlx::query("SELECT * FROM jobs WHERE id = $1")
-            .bind(id)
+            .bind(uuid)
             .fetch_optional(&self.pool)
             .await?;
 
@@ -138,30 +139,17 @@ impl Database {
     pub async fn get_due_jobs(
         &self,
         limit: i64,
-        job_types: &[&str],
+        _job_types: &[&str],
     ) -> Result<Vec<HashMap<String, String>>> {
-        let job_types_str = job_types
-            .iter()
-            .map(|t| format!("'{}'", t))
-            .collect::<Vec<_>>()
-            .join(", ");
-
-        let query = format!(
-            r#"
+        let query = r#"
             SELECT * FROM jobs 
             WHERE status::job_status = 'pending'::job_status 
             AND scheduled_at <= NOW()
-            AND job_type IN ({})
             ORDER BY priority DESC, scheduled_at ASC
             LIMIT $1
-            "#,
-            job_types_str
-        );
+        "#;
 
-        let rows = sqlx::query(&query)
-            .bind(limit)
-            .fetch_all(&self.pool)
-            .await?;
+        let rows = sqlx::query(query).bind(limit).fetch_all(&self.pool).await?;
 
         Ok(rows.iter().map(row_to_hashmap).collect())
     }

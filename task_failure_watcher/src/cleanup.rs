@@ -73,7 +73,7 @@ impl CleanupManager {
 
         // If job has exceeded max retries, move to dead letter queue
         if job.retries >= job.max_retries {
-            let dead_letter_queue = format!("dead_letter:{}", job.job_type.to_string());
+            let dead_letter_queue = "dead_letter".to_string();
             self.task_manager
                 .move_to_dead_letter_queue(&job.id, &dead_letter_queue)
                 .await?;

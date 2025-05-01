@@ -16,7 +16,6 @@ use uuid::Uuid;
 fn convert_task_job_to_core_job(task_job: TaskJob) -> CoreJob {
     CoreJob {
         id: task_job.id,
-        schedule_type: task_job.job_type,
         schedule: task_job.scheduled_at,
         payload: serde_json::to_value(task_job.payload).unwrap(),
         status: task_job.status,

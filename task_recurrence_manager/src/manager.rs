@@ -73,7 +73,6 @@ impl RecurrenceManager {
         for batch in job_batches {
             for job in &batch {
                 let job_data = JobData {
-                    job_type: job.schedule_type.clone(),
                     status: job.status,
                     priority: 0, // Default priority since it's not in the Job struct
                     schedule_at: Some(job.schedule),
@@ -116,6 +115,11 @@ impl RecurrenceManager {
         let templates = self.db.get_active_templates().await?;
 
         for template in templates {
+            // Skip templates without cron expressions
+            if template.cron.is_none() {
+                continue;
+            }
+
             let jobs = self.expander.expand_template(
                 &template,
                 now - Duration::hours(1),

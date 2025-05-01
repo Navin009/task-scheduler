@@ -10,7 +10,6 @@ use uuid::Uuid;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Job {
     pub id: String,
-    pub job_type: JobType,
     pub status: JobStatus,
     pub priority: i32,
     pub scheduled_at: DateTime<Utc>,
@@ -37,7 +36,6 @@ impl TaskManager {
         payload: HashMap<String, String>,
     ) -> Result<String> {
         let job_data = crate::db::JobData {
-            job_type: JobType::OneTime,
             status: JobStatus::Pending,
             priority,
             schedule_at: scheduled_at,
@@ -72,7 +70,6 @@ impl TaskManager {
         });
 
         let job_data = crate::db::JobData {
-            job_type: JobType::Recurring,
             status: JobStatus::Pending,
             priority,
             cron: cron,
@@ -89,7 +86,7 @@ impl TaskManager {
             metadata: None,
         };
 
-        self.db.create_template(job_data).await
+        self.db.create_template(job_data, JobType::Recurring).await
     }
 
     pub async fn create_polling_job(
@@ -101,7 +98,6 @@ impl TaskManager {
         payload: HashMap<String, String>,
     ) -> Result<String> {
         let job_data = crate::db::JobData {
-            job_type: JobType::Polling,
             status: JobStatus::Pending,
             priority,
             schedule_at: schedule_at,
@@ -118,19 +114,13 @@ impl TaskManager {
             name: None,
         };
 
-        self.db.create_template(job_data).await
+        self.db.create_template(job_data, JobType::Polling).await
     }
 
     pub async fn get_job(&self, id: &str) -> Result<Option<Job>> {
         let job_data = self.db.get_job(id).await?;
         Ok(job_data.map(|data| Job {
             id: data.get("id").unwrap().clone(),
-            job_type: match data.get("job_type").unwrap().as_str() {
-                "one_time" => JobType::OneTime,
-                "recurring" => JobType::Recurring,
-                "polling" => JobType::Polling,
-                _ => panic!("Invalid job type"),
-            },
             status: match data.get("status").unwrap().as_str() {
                 "pending" => JobStatus::Pending,
                 "running" => JobStatus::Running,
@@ -163,19 +153,12 @@ impl TaskManager {
     }
 
     pub async fn get_due_jobs(&self, limit: i64) -> Result<Vec<Job>> {
-        let job_types = vec!["one_time", "recurring", "polling"];
-        let job_data = self.db.get_due_jobs(limit, &job_types).await?;
+        let job_data = self.db.get_due_jobs(limit, &[]).await?;
 
         Ok(job_data
             .into_iter()
             .map(|data| Job {
                 id: data.get("id").unwrap().clone(),
-                job_type: match data.get("job_type").unwrap().as_str() {
-                    "one_time" => JobType::OneTime,
-                    "recurring" => JobType::Recurring,
-                    "polling" => JobType::Polling,
-                    _ => panic!("Invalid job type"),
-                },
                 status: match data.get("status").unwrap().as_str() {
                     "pending" => JobStatus::Pending,
                     "running" => JobStatus::Running,
@@ -203,12 +186,6 @@ impl TaskManager {
             .into_iter()
             .map(|data| Job {
                 id: data.get("id").unwrap().clone(),
-                job_type: match data.get("job_type").unwrap().as_str() {
-                    "one_time" => JobType::OneTime,
-                    "recurring" => JobType::Recurring,
-                    "polling" => JobType::Polling,
-                    _ => panic!("Invalid job type"),
-                },
                 status: match data.get("status").unwrap().as_str() {
                     "pending" => JobStatus::Pending,
                     "running" => JobStatus::Running,
@@ -241,12 +218,6 @@ impl TaskManager {
             .into_iter()
             .map(|data| Job {
                 id: data.get("id").unwrap().clone(),
-                job_type: match data.get("job_type").unwrap().as_str() {
-                    "one_time" => JobType::OneTime,
-                    "recurring" => JobType::Recurring,
-                    "polling" => JobType::Polling,
-                    _ => panic!("Invalid job type"),
-                },
                 status: match data.get("status").unwrap().as_str() {
                     "pending" => JobStatus::Pending,
                     "running" => JobStatus::Running,
@@ -280,12 +251,6 @@ impl TaskManager {
             .into_iter()
             .map(|data| Job {
                 id: data.get("id").unwrap().clone(),
-                job_type: match data.get("job_type").unwrap().as_str() {
-                    "one_time" => JobType::OneTime,
-                    "recurring" => JobType::Recurring,
-                    "polling" => JobType::Polling,
-                    _ => panic!("Invalid job type"),
-                },
                 status: match data.get("status").unwrap().as_str() {
                     "pending" => JobStatus::Pending,
                     "running" => JobStatus::Running,

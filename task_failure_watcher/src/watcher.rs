@@ -109,7 +109,7 @@ impl TaskFailureWatcher {
             .await?;
 
         // Store job in dead letter queue
-        let dead_letter_queue = format!("dead_letter:{}", job.job_type.to_string());
+        let dead_letter_queue = "dead_letter".to_string();
         self.cache
             .push_to_queue(&dead_letter_queue, &job.id)
             .await?;
@@ -119,10 +119,6 @@ impl TaskFailureWatcher {
     }
 
     fn get_queue_name(&self, job: &Job) -> Option<String> {
-        match job.job_type {
-            JobType::OneTime => Some("one_time_jobs".to_string()),
-            JobType::Recurring => Some("recurring_jobs".to_string()),
-            JobType::Polling => Some("polling_jobs".to_string()),
-        }
+        Some("one_time_jobs".to_string())
     }
 }

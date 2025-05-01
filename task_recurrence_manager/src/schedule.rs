@@ -40,7 +40,6 @@ impl ScheduleExpander {
 
                     let job = Job {
                         id: uuid::Uuid::new_v4().to_string(),
-                        schedule_type: JobType::Recurring,
                         schedule: next_time,
                         payload: template.payload.clone(),
                         status: scheduler_core::models::JobStatus::Pending,

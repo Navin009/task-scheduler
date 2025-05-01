@@ -27,14 +27,14 @@ pub struct JobUpdate {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct TemplateCreate {
-    pub cron: String,
-    pub payload_template: Value,
+    pub cron: Option<String>,
+    pub payload: Value,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct TemplateUpdate {
     pub cron: Option<String>,
-    pub payload_template: Option<Value>,
+    pub payload: Option<Value>,
     pub active: Option<bool>,
 }
 

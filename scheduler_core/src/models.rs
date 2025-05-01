@@ -20,8 +20,8 @@ pub struct Job {
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct Template {
     pub id: Uuid,
-    pub cron: String,
-    pub payload_template: serde_json::Value,
+    pub cron: Option<String>,
+    pub payload: serde_json::Value,
     pub active: bool,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,

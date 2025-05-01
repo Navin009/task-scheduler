@@ -21,8 +21,18 @@ impl ScheduleExpander {
         let mut jobs = Vec::new();
         let mut current_time = start_time;
 
+        // Return early if no cron expression is available
+        let cron_expr = match &template.cron {
+            Some(expr) => expr,
+            None => {
+                return Err(crate::error::Error::ScheduleParse(
+                    "No cron expression provided".to_string(),
+                ))
+            }
+        };
+
         while current_time <= end_time {
-            match parse(&template.cron, &current_time) {
+            match parse(cron_expr, &current_time) {
                 Ok(next_time) => {
                     if next_time > end_time {
                         break;
@@ -32,7 +42,7 @@ impl ScheduleExpander {
                         id: uuid::Uuid::new_v4().to_string(),
                         schedule_type: JobType::Recurring,
                         schedule: next_time,
-                        payload: template.payload_template.clone(),
+                        payload: template.payload.clone(),
                         status: scheduler_core::models::JobStatus::Pending,
                         created_at: Utc::now(),
                         updated_at: Utc::now(),

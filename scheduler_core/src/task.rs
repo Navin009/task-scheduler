@@ -60,12 +60,12 @@ impl TaskManager {
     pub async fn create_recurring_job(
         &self,
         parent_job_id: Uuid,
-        cron_pattern: Option<String>,
+        cron: Option<String>,
         priority: i32,
         payload: HashMap<String, String>,
     ) -> Result<String> {
         //based on the cron, calculate the next run time
-        let schedule_at = cron_pattern.clone().map(|c| {
+        let schedule_at = cron.clone().map(|c| {
             parse(&c, &Utc::now())
                 .expect("Invalid cron expression")
                 .with_timezone(&Utc)
@@ -75,7 +75,7 @@ impl TaskManager {
             job_type: JobType::Recurring,
             status: JobStatus::Pending,
             priority,
-            cron: cron_pattern,
+            cron: cron,
             parent_job_id: Some(parent_job_id),
             max_retries: 3,
             retries: 0,

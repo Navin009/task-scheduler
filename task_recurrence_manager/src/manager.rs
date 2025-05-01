@@ -42,7 +42,11 @@ impl RecurrenceManager {
 
         for template in templates {
             if let Err(e) = self.process_template(&template, now, end_time).await {
-                warn!("Failed to process template {}: {}", template.id, e);
+                warn!(
+                    "Failed to process template {}: {}",
+                    template.id.to_string(),
+                    e
+                );
             }
         }
 
@@ -100,7 +104,7 @@ impl RecurrenceManager {
 
         info!(
             "Processed template {}: created {} jobs",
-            template.id,
+            template.id.to_string(),
             job_batches_clone.iter().map(|b| b.len()).sum::<usize>()
         );
 

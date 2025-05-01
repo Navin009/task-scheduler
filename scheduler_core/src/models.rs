@@ -2,6 +2,7 @@ use crate::error::Error;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, Type};
+use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct Job {
@@ -18,8 +19,8 @@ pub struct Job {
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct Template {
-    pub id: String,
-    pub cron_pattern: String,
+    pub id: Uuid,
+    pub cron: String,
     pub payload_template: serde_json::Value,
     pub active: bool,
     pub created_at: DateTime<Utc>,

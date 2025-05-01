@@ -22,7 +22,7 @@ impl ScheduleExpander {
         let mut current_time = start_time;
 
         while current_time <= end_time {
-            match parse(&template.cron_pattern, &current_time) {
+            match parse(&template.cron, &current_time) {
                 Ok(next_time) => {
                     if next_time > end_time {
                         break;

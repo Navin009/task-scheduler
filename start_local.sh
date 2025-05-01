@@ -35,6 +35,13 @@ check_docker_running() {
     fi
 }
 
+# Function to clean stale cargo locks
+clean_cargo_locks() {
+    echo -e "${YELLOW}Cleaning any stale Cargo locks...${NC}"
+    find target -name ".rustc_info.json.*.lock" -delete 2>/dev/null || true
+    find ~/.cargo -name "*.lock" -mtime +1 -delete 2>/dev/null || true
+}
+
 # Check required commands
 echo -e "${YELLOW}Checking system requirements...${NC}"
 check_command docker
@@ -100,29 +107,40 @@ until docker-compose exec valkey redis-cli ping | grep -q "PONG"; do
     sleep 1
 done
 
+# Clean any stale cargo locks
+clean_cargo_locks
+
+# Pre-build all binaries to avoid concurrent build issues
+echo -e "${YELLOW}Pre-building all binaries to avoid file locks...${NC}"
+cargo build --bin queue_populator --bin task_executor --bin task_failure_watcher --bin task_recurrence_manager --bin task_scheduler_api
+
 # Start Queue Populator with watch
 echo -e "${QUEUE_COLOR}[TASK QUEUE POPULATOR]${NC} Starting Queue Populator (with watch)..."
-cargo watch -x 'run --bin queue_populator' &
+cargo watch -q -w queue_populator -w scheduler_core -x 'run --bin queue_populator' --no-restart &
+sleep 2
 
 # Start Task Executor with watch
 echo -e "${EXECUTOR_COLOR}[TASK EXECUTOR]${NC} Starting Task Executor (with watch)..."
-cargo watch -x 'run --bin task_executor' &
+cargo watch -q -w task_executor -w scheduler_core -x 'run --bin task_executor' --no-restart &
+sleep 2
 
 # Start Task Failure Watcher with watch
 echo -e "${FAILURE_COLOR}[TASK FAILURE WATCHER]${NC} Starting Task Failure Watcher (with watch)..."
-cargo watch -x 'run --bin task_failure_watcher' &
+cargo watch -q -w task_failure_watcher -w scheduler_core -x 'run --bin task_failure_watcher' --no-restart &
+sleep 2
 
 # Start Task Recurrence Manager with watch
 echo -e "${RECURRENCE_COLOR}[TASK RECURRENCE MANAGER]${NC} Starting Task Recurrence Manager (with watch)..."
-cargo watch -x 'run --bin task_recurrence_manager' &
+cargo watch -q -w task_recurrence_manager -w scheduler_core -x 'run --bin task_recurrence_manager' --no-restart &
+sleep 2
 
 # Start the API service with watch
 echo -e "${API_COLOR}[TASK SCHEDULER API]${NC} Starting Task Scheduler API (with watch)..."
-cargo watch -x 'run --bin task_scheduler_api' &
+cargo watch -q -w task_scheduler_api -w scheduler_core -x 'run --bin task_scheduler_api' --no-restart &
 
 echo -e "${GREEN}All services started in watch mode!${NC}"
 echo -e "${YELLOW}Press Ctrl+C to stop all services${NC}"
 
 # Wait for Ctrl+C
-trap "echo -e '${YELLOW}Stopping all services...${NC}'; kill 0" EXIT
+trap "echo -e '${YELLOW}Stopping all services...${NC}'; clean_cargo_locks; kill 0" EXIT
 wait 

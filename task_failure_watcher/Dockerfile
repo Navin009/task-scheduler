@@ -1,9 +1,15 @@
-FROM task-scheduler-base as builder
+FROM task-scheduler-base:latest AS builder
 
+# Use the pre-built binary from the base image
+# Just build this specific service to ensure it is up to date
 RUN cargo build --release --bin task_failure_watcher
 
-FROM debian:bullseye-slim
-RUN apt-get update && apt-get install -y libssl-dev && rm -rf /var/lib/apt/lists/*
+FROM task-scheduler-base:runtime AS runtime
+
+# Copy only the needed binary
 COPY --from=builder /usr/src/app/target/release/task_failure_watcher /usr/local/bin/
+
+# Set an explicit user for better security
+USER nobody
 
 CMD ["task_failure_watcher"]

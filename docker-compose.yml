@@ -1,4 +1,10 @@
 services:
+  base-image:
+    image: task-scheduler-base:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.base
+
   postgres:
     image: postgres:14
     environment:
@@ -24,6 +30,7 @@ services:
     ports:
       - "8080:8080"
     depends_on:
+      - base-image
       - postgres
       - valkey
     environment:
@@ -36,6 +43,7 @@ services:
       context: .
       dockerfile: queue_populator/Dockerfile
     depends_on:
+      - base-image
       - postgres
       - valkey
     environment:
@@ -48,6 +56,7 @@ services:
       context: .
       dockerfile: task_executor/Dockerfile
     depends_on:
+      - base-image
       - postgres
       - valkey
     environment:
@@ -60,6 +69,7 @@ services:
       context: .
       dockerfile: task_failure_watcher/Dockerfile
     depends_on:
+      - base-image
       - postgres
       - valkey
     environment:
@@ -72,6 +82,7 @@ services:
       context: .
       dockerfile: task_recurrence_manager/Dockerfile
     depends_on:
+      - base-image
       - postgres
       - valkey
     environment:

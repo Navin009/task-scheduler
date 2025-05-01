@@ -1,33 +1,44 @@
-FROM rust:1.77-slim-bullseye as builder
+FROM rust:slim-bookworm AS builder
 
 WORKDIR /usr/src/app
 
-# Install build dependencies
-RUN apt-get update && apt-get install -y \
+# Install build dependencies with minimal layers and fix SSL certificates
+RUN apt-get update && apt-get install -y --no-install-recommends \
     pkg-config \
     libssl-dev \
+    ca-certificates \
+    git \
+    && update-ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy the workspace
+# Create vendor directory for dependencies
+RUN mkdir -p /usr/src/app/vendor
+
+# Copy workspace configuration files
+COPY Cargo.toml Cargo.lock ./
+COPY */Cargo.toml */Cargo.toml
+
+# Create dummy source files for all crates to trick cargo into caching dependencies
+RUN mkdir -p $(find . -name Cargo.toml -exec dirname {} \; | grep -v "^\.$" | sort) && \
+    find . -name Cargo.toml -exec dirname {} \; | grep -v "^\.$" | xargs -I{} touch {}/lib.rs && \
+    find . -name Cargo.toml -exec dirname {} \; | grep -v "^\.$" | xargs -I{} mkdir -p {}/src && \
+    find . -name Cargo.toml -exec dirname {} \; | grep -v "^\.$" | xargs -I{} touch {}/src/lib.rs
+
+# Pre-build dependencies for all crates
+RUN cargo build --release || true
+
+# Copy the actual source code
 COPY . .
 
-# Build all dependencies
+# Build all binaries
 RUN cargo build --release
 
-# Create a minimal runtime image
-FROM debian:bullseye-slim
+# Create a minimal runtime base image
+FROM debian:bookworm-slim AS runtime
 
-# Install runtime dependencies
-RUN apt-get update && apt-get install -y \
-    libssl1.1 \
-    && rm -rf /var/lib/apt/lists/*
-
-# Copy the built binaries
-COPY --from=builder /usr/src/app/target/release/task_scheduler_api /usr/local/bin/
-COPY --from=builder /usr/src/app/target/release/queue_populator /usr/local/bin/
-COPY --from=builder /usr/src/app/target/release/task_executor /usr/local/bin/
-COPY --from=builder /usr/src/app/target/release/task_failure_watcher /usr/local/bin/
-COPY --from=builder /usr/src/app/target/release/task_recurrence_manager /usr/local/bin/
-
-# Set the working directory
-WORKDIR /usr/src/app 
+# Install only runtime dependencies with minimal layers
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libssl3 \
+    ca-certificates \
+    && update-ca-certificates \
+    && rm -rf /var/lib/apt/lists/* 

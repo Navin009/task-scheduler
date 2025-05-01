@@ -2,7 +2,7 @@ FROM rust:slim-bookworm AS builder
 
 WORKDIR /usr/src/app
 
-# Install build dependencies with minimal layers and fix SSL certificates
+# Install build dependencies and SSL certificates
 RUN apt-get update && apt-get install -y --no-install-recommends \
     pkg-config \
     libssl-dev \
@@ -11,34 +11,59 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && update-ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# Create vendor directory for dependencies
-RUN mkdir -p /usr/src/app/vendor
+# Configure cargo to use git-fetch-with-cli to avoid SSL issues
+RUN mkdir -p ~/.cargo \
+    && echo '[net]' >> ~/.cargo/config \
+    && echo 'git-fetch-with-cli = true' >> ~/.cargo/config
 
-# Copy workspace configuration files
-COPY Cargo.toml Cargo.lock ./
-COPY */Cargo.toml */Cargo.toml
-
-# Create dummy source files for all crates to trick cargo into caching dependencies
-RUN mkdir -p $(find . -name Cargo.toml -exec dirname {} \; | grep -v "^\.$" | sort) && \
-    find . -name Cargo.toml -exec dirname {} \; | grep -v "^\.$" | xargs -I{} touch {}/lib.rs && \
-    find . -name Cargo.toml -exec dirname {} \; | grep -v "^\.$" | xargs -I{} mkdir -p {}/src && \
-    find . -name Cargo.toml -exec dirname {} \; | grep -v "^\.$" | xargs -I{} touch {}/src/lib.rs
-
-# Pre-build dependencies for all crates
-RUN cargo build --release || true
-
-# Copy the actual source code
+# Copy the workspace files
 COPY . .
 
-# Build all binaries
-RUN cargo build --release
+# Build each project separately with SSL workaround
+RUN CARGO_NET_GIT_FETCH_WITH_CLI=true cargo build --release -p scheduler_core && \
+    CARGO_NET_GIT_FETCH_WITH_CLI=true cargo build --release -p task_scheduler_api && \
+    CARGO_NET_GIT_FETCH_WITH_CLI=true cargo build --release -p queue_populator && \
+    CARGO_NET_GIT_FETCH_WITH_CLI=true cargo build --release -p task_executor && \
+    CARGO_NET_GIT_FETCH_WITH_CLI=true cargo build --release -p task_failure_watcher && \
+    CARGO_NET_GIT_FETCH_WITH_CLI=true cargo build --release -p task_recurrence_manager
 
-# Create a minimal runtime base image
-FROM debian:bookworm-slim AS runtime
+# Create smaller runtime image
+FROM debian:bookworm-slim AS runtime-base
 
-# Install only runtime dependencies with minimal layers
+# Install only runtime dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libssl3 \
     ca-certificates \
     && update-ca-certificates \
-    && rm -rf /var/lib/apt/lists/* 
+    && rm -rf /var/lib/apt/lists/*
+
+# Task Scheduler API
+FROM runtime-base AS task-scheduler-api
+COPY --from=builder /usr/src/app/target/release/task_scheduler_api /usr/local/bin/
+USER nobody
+EXPOSE 8080
+CMD ["task_scheduler_api"]
+
+# Queue Populator
+FROM runtime-base AS queue-populator
+COPY --from=builder /usr/src/app/target/release/queue_populator /usr/local/bin/
+USER nobody
+CMD ["queue_populator"]
+
+# Task Executor
+FROM runtime-base AS task-executor
+COPY --from=builder /usr/src/app/target/release/task_executor /usr/local/bin/
+USER nobody
+CMD ["task_executor"]
+
+# Task Failure Watcher
+FROM runtime-base AS task-failure-watcher
+COPY --from=builder /usr/src/app/target/release/task_failure_watcher /usr/local/bin/
+USER nobody
+CMD ["task_failure_watcher"]
+
+# Task Recurrence Manager
+FROM runtime-base AS task-recurrence-manager
+COPY --from=builder /usr/src/app/target/release/task_recurrence_manager /usr/local/bin/
+USER nobody
+CMD ["task_recurrence_manager"] 

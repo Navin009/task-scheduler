@@ -1,6 +1,6 @@
 use chrono::{DateTime, Duration, Utc};
 use cron_parser::parse;
-use scheduler_core::models::{Job, JobType, Template};
+use scheduler_core::models::{Job, Template};
 use std::collections::HashSet;
 
 pub struct ScheduleExpander {

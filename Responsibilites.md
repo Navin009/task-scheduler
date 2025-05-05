@@ -61,6 +61,25 @@ The Task Scheduler System is a distributed application designed to manage, execu
   - Metrics exposure
   - Operational alerts
 
+### 2a. Authentication & Authorization (Updated)
+
+**Primary Responsibilities:**
+
+- **API Key Authentication (task_scheduler_api):**
+  - All API requests to the Task Scheduler API require a valid API key in the `x-api-key` header.
+  - API keys are managed in the `api_keys` table, with expiry and permissions.
+  - Jobs are linked to merchants via the `merchant_id` field.
+  - No user login/session management is handled by the Task Scheduler API.
+
+- **User Management (Separate Backend/UI):**
+  - Handles user onboarding, login, logout, and role management (super admin, merchant admin, merchant member).
+  - Manages the `users` and `merchants` tables.
+  - Issues JWTs or sessions for UI access (not used by the Task Scheduler API).
+
+- **Multi-Tenancy:**
+  - Each job and API key is associated with a merchant for tenant isolation.
+  - Templates can be enabled/disabled via the `active` field.
+
 ### 3. Task Executor (`task_executor`)
 
 **Primary Responsibilities:**
@@ -145,76 +164,26 @@ The Task Scheduler System is a distributed application designed to manage, execu
   - Queue balancing
   - Backpressure handling
 
-## Architecture Diagram
+## Architecture Diagram (Updated)
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                                                                     │
-│                    Task Scheduler System                            │
-│                                                                     │
-└─────────────────────────────────────────────────────────────────────┘
-                               │
-                               ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                                                                     │
-│                         scheduler_core                              │
-│                                                                     │
-│   ┌─────────────┐  ┌─────────────┐  ┌──────────────────────────┐    │
-│   │             │  │             │  │                          │    │
-│   │ Data Models │  │ Data Access │  │ Queue Operations         │    │
-│   │             │  │             │  │                          │    │
-│   └─────────────┘  └─────────────┘  └──────────────────────────┘    │
-│                                                                     │
-└─────────────────────────────────────────────────────────────────────┘
-                               ▲
-                               │
-       ┌───────────────────────┼───────────────────────┐
-       │                       │                       │
-       ▼                       ▼                       ▼
-┌───────────────┐      ┌───────────────┐      ┌───────────────┐
-│               │      │               │      │               │
-│ API Service   │      │ Task Executor │      │ Failure       │
-│               │      │               │      │ Watcher       │
-│ ┌───────────┐ │      │ ┌───────────┐ │      │ ┌───────────┐ │
-│ │ REST      │ │      │ │ Job       │ │      │ │ Failure   │ │
-│ │ Interface │ │      │ │ Processing│ │      │ │ Detection │ │
-│ └───────────┘ │      │ └───────────┘ │      │ └───────────┘ │
-│ ┌───────────┐ │      │ ┌───────────┐ │      │ ┌───────────┐ │
-│ │Job/Template││      │ │ Execution │ │      │ │ Alerting  │ │
-│ │Management │ │      │ │Environment│ │      │ └───────────┘ │
-│ └───────────┘ │      │ └───────────┘ │      │               │
-│               │      │               │      │               │
-└───────────────┘      └───────────────┘      └───────────────┘
-       ▲                       ▲                       ▲
-       │                       │                       │
-       └───────────────────────┼───────────────────────┘
-                               │
-                               ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                                                                     │
-│                         Database & Redis                            │
-│                                                                     │
-└─────────────────────────────────────────────────────────────────────┘
-                               ▲
-                               │
-       ┌───────────────────────┼───────────────────────┐
-       │                       │                       │
-       ▼                       ▼                       ▼
-┌───────────────┐      ┌───────────────┐      ┌───────────────┐
-│               │      │               │      │               │
-│ Recurrence    │      │ Queue         │      │ (Optional)    │
-│ Manager       │      │ Populator     │      │ UI Backend    │
-│               │      │               │      │               │
-│ ┌───────────┐ │      │ ┌───────────┐ │      │ ┌───────────┐ │
-│ │ Schedule  │ │      │ │ Queue     │ │      │ │ Dashboard │ │
-│ │ Expansion │ │      │ │ Management│ │      │ │ Interface │ │
-│ └───────────┘ │      │ └───────────┘ │      │ └───────────┘ │
-│ ┌───────────┐ │      │ ┌───────────┐ │      │ ┌───────────┐ │
-│ │ Temporal  │ │      │ │ Dependency│ │      │ │ Reporting │ │
-│ │ Logic     │ │      │ │ Resolution│ │      │ └───────────┘ │
-│ └───────────┘ │      │ └───────────┘ │      │               │
-│               │      │               │      │               │
-└───────────────┘      └───────────────┘      └───────────────┘
+```mermaid
+graph TD
+    subgraph UI & User Management
+        A[Scheduler Monitoring UI]
+        B[User Management Backend]
+        A -- login, user CRUD --> B
+    end
+    subgraph Task Scheduler System
+        C[Task Scheduler API]
+        D[Job Executor, Watcher, etc.]
+        E[(Database)]
+        F[Producer Service]
+        F -- API Key Auth --> C
+        C -- jobs, templates, merchants --> E
+        D -- jobs --> E
+    end
+    B -- manages users, merchants, api_keys --> E
+    A -- monitoring, job queries (via B) --> C
 ```
 
 ## Data Flow

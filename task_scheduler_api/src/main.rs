@@ -13,6 +13,7 @@ mod guard;
 mod handlers;
 mod middleware;
 mod security;
+mod model;
 
 #[launch]
 async fn rocket() -> Rocket<Build> {

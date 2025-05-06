@@ -6,7 +6,7 @@ use tracing::{error, info};
 use scheduler_core::{
     cache::Cache,
     db::Database,
-    models::{Job, JobStatus, JobType},
+    models::{Job, JobStatus},
 };
 
 use crate::{error::Error, process::ProcessManager, state::ExecutionState};

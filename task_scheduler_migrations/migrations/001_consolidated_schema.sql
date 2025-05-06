@@ -2,6 +2,14 @@
 CREATE TYPE job_status AS ENUM ('pending', 'running', 'completed', 'failed', 'cancelled', 'retrying');
 CREATE TYPE job_type AS ENUM ('one_time', 'recurring', 'polling');
 
+-- Merchants table
+CREATE TABLE merchants (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(255) UNIQUE NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Create templates table
 CREATE TABLE templates (
     id UUID PRIMARY KEY,
@@ -71,14 +79,6 @@ CREATE TRIGGER update_templates_updated_at
     BEFORE UPDATE ON templates
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
-
--- Merchants table
-CREATE TABLE merchants (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name VARCHAR(255) UNIQUE NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
 
 -- Users table
 CREATE TABLE users (

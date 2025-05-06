@@ -2,7 +2,7 @@ use anyhow::Result;
 use scheduler_core::{
     cache::Cache,
     task::{Job, TaskManager},
-    JobStatus, JobType,
+    JobStatus,
 };
 use std::time::Duration as StdDuration;
 use tokio::time::sleep;

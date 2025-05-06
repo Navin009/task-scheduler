@@ -1,9 +1,9 @@
+use rocket::catch;
 use rocket::http::Status;
 use rocket::response::{Responder, Response};
 use rocket::Request;
 use scheduler_core::error::Error as SchedulerError;
 use serde_json::json;
-use std::fmt;
 use thiserror::Error;
 
 #[allow(dead_code)]
@@ -25,14 +25,24 @@ pub enum Error {
     ValidationError(String),
 }
 
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum ApiError {
+    #[error("Not Found: {0}")]
     NotFound(String),
+    #[error("Bad Request: {0}")]
     BadRequest(String),
+    #[error("Internal Server Error: {0}")]
     InternalServerError(String),
+    #[error("Database Error: {0}")]
     DatabaseError(String),
+    #[error("Redis Error: {0}")]
     RedisError(String),
+    #[error("Validation Error: {0}")]
     ValidationError(String),
+    #[error("Missing API key")]
+    MissingApiKey,
+    #[error("Invalid API key")]
+    InvalidApiKey,
 }
 
 impl From<SchedulerError> for ApiError {
@@ -52,19 +62,6 @@ impl From<SchedulerError> for ApiError {
     }
 }
 
-impl fmt::Display for ApiError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            ApiError::NotFound(msg) => write!(f, "Not Found: {}", msg),
-            ApiError::BadRequest(msg) => write!(f, "Bad Request: {}", msg),
-            ApiError::InternalServerError(msg) => write!(f, "Internal Server Error: {}", msg),
-            ApiError::DatabaseError(msg) => write!(f, "Database Error: {}", msg),
-            ApiError::RedisError(msg) => write!(f, "Redis Error: {}", msg),
-            ApiError::ValidationError(msg) => write!(f, "Validation Error: {}", msg),
-        }
-    }
-}
-
 impl<'r> Responder<'r, 'static> for ApiError {
     fn respond_to(self, _: &'r Request<'_>) -> rocket::response::Result<'static> {
         let (status, message) = match self {
@@ -74,6 +71,8 @@ impl<'r> Responder<'r, 'static> for ApiError {
             ApiError::DatabaseError(msg) => (Status::InternalServerError, msg),
             ApiError::RedisError(msg) => (Status::InternalServerError, msg),
             ApiError::ValidationError(msg) => (Status::BadRequest, msg),
+            ApiError::MissingApiKey => (Status::BadRequest, "Missing API key".to_string()),
+            ApiError::InvalidApiKey => (Status::BadRequest, "Invalid API key".to_string()),
         };
 
         let body = json!({
